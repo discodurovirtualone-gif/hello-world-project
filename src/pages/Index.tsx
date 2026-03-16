@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import { Milk, ClipboardList, NotebookPen, FileBarChart, BarChart3, LayoutDashboard, BookOpen, Calculator, SlidersHorizontal, Heart, Dna } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import BulkUpload from "@/components/BulkUpload";
+import PdfDownload from "@/components/PdfDownload";
 
 const inputItems = [
   {
