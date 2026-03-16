@@ -1,47 +1,193 @@
+import { useState, useMemo } from "react";
 import FormLayout from "@/components/FormLayout";
-import { Table, TableHeader, TableHead, TableRow, TableBody } from "@/components/ui/table";
+import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ArrowUpDown } from "lucide-react";
+import { useGanaderia, calcWood } from "@/context/GanaderiaContext";
 
-const sections = [
-  { number: 1, title: "Reporte Vacas Leche", subtitle: "Cantidad de Animales", columns: ["Identificación Animal", "TC Leche"] },
-  { number: 2, title: "Reporte Vacas de Cría Cruce", subtitle: "Cantidad de Animales", columns: ["Identificación Animal", "N° Intentos"] },
-  { number: 3, title: "Reporte Vacas de Cría Peligro", subtitle: "Cantidad de Animales", columns: ["Identificación Animal", "TC Preñez"] },
-  { number: 4, title: "Mal Pedigree - Mejorar", subtitle: "Cantidad de Animales", columns: ["Identificación Animal", "Índice Marginal"] },
-  { number: 5, title: "Reporte Intervalo Parto Servicio (IPS)", subtitle: "Cantidad de Animales", columns: ["Identificación Animal", "Orden"] },
-  { number: 6, title: "Reporte Intervalo Parto Concepción (IPC)", subtitle: "Cantidad de Animales", columns: ["Identificación Animal", "Intervalo Parto Concep"] },
-  { number: 7, title: "Reporte Número Servicios por Concepción", subtitle: "Cantidad de Animales", columns: ["Identificación Animal", "Servicio / Concep"] },
-  { number: 8, title: "Reporte de Mortalidad en Terneros (MT)", subtitle: "Cantidad de Animales", columns: ["Identificación Animal", "Mortalidad"] },
-  { number: 9, title: "Reporte Vacas Vacías", subtitle: "Cantidad de Animales", columns: ["Identificación Animal", "Prod. Sólidos (Kg)"] },
-];
+const DIAS = [30, 120, 210, 270];
+const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
+const MAX_ROWS = 20;
+
+const calcKg = (lc305: number, pct: number) => lc305 > 0 && pct > 0 ? lc305 * (pct / 100) : 0;
 
 const ReporteVacas = () => {
+  const { registrosBasicos, registrosProductivos, registrosReproductivos, factores } = useGanaderia();
+
+  // Sort states for each section
+  const [sortStates, setSortStates] = useState<Record<string, { key: string; asc: boolean }>>({});
+
+  const toggleSort = (section: string, key: string) => {
+    setSortStates((prev) => {
+      const cur = prev[section];
+      if (cur?.key === key) return { ...prev, [section]: { key, asc: !cur.asc } };
+      return { ...prev, [section]: { key, asc: false } };
+    });
+  };
+
+  // Compute enriched vaca data
+  const vacaData = useMemo(() => {
+    return registrosBasicos.map((vaca) => {
+      const prod = registrosProductivos.find((p) => p.id_vaca === vaca.id_vaca);
+      const repro = registrosReproductivos.find((r) => r.id_vaca === vaca.id_vaca);
+
+      let lc305 = 0;
+      if (prod) {
+        const reales = [parseFloat(prod.reg_1_dia30) || 0, parseFloat(prod.reg_2_dia120) || 0, parseFloat(prod.reg_3_dia210) || 0, parseFloat(prod.reg_4_dia270) || 0];
+        if (reales.some((v) => v > 0)) {
+          const pots = DIAS.map((dia, i) => {
+            let closest = POTENCIALES[0]; let minD = Math.abs(calcWood(POTENCIALES[0], dia) - reales[i]);
+            for (const p of POTENCIALES) { const d = Math.abs(calcWood(p, dia) - reales[i]); if (d < minD) { minD = d; closest = p; } }
+            return closest;
+          });
+          lc305 = pots.reduce((s, v) => s + v, 0) / pots.length;
+        }
+      }
+
+      const pctGrasa = prod ? parseFloat(prod.porcentaje_grasa) || 0 : 0;
+      const pctProt = prod ? parseFloat(prod.porcentaje_proteina) || 0 : 0;
+      const kgGrasa = calcKg(lc305, pctGrasa);
+      const kgProt = calcKg(lc305, pctProt);
+      const kgSolidos = kgGrasa + kgProt;
+
+      // Valor de cría simplified
+      const edad = parseInt(vaca.edad) || 0;
+      const lactancia = parseInt(vaca.lactancia) || 0;
+      const razaMap: Record<string, string> = { "1": "Holstein", "2": "Jersey" };
+      const razaNombre = razaMap[vaca.raza] || vaca.raza;
+      const factor = factores.find((f) => f.raza === razaNombre && f.edad === edad && f.lactancia === lactancia);
+      const prodCorregida = factor && lc305 > 0 ? lc305 * factor.factor : 0;
+
+      const iip = repro ? parseFloat(repro.iip) || 0 : 0;
+      const ipc = repro ? parseFloat(repro.ipc) || 0 : 0;
+      const servConc = repro ? parseFloat(repro.serv_conc) || 0 : 0;
+
+      return {
+        id_vaca: vaca.id_vaca,
+        kgGrasa, kgProt, kgSolidos, lc305, prodCorregida,
+        l1: prod?.lact1 || "", l2: prod?.lact2 || "", l3: prod?.lact3 || "", l4: prod?.lact4 || "", l5: prod?.lact5 || "",
+        iip, ipc, servConc,
+      };
+    });
+  }, [registrosBasicos, registrosProductivos, registrosReproductivos, factores]);
+
+  const sortAndSlice = (data: typeof vacaData, section: string, defaultKey: string) => {
+    const s = sortStates[section] || { key: defaultKey, asc: false };
+    const sorted = [...data].sort((a, b) => {
+      const va = (a as any)[s.key] ?? 0;
+      const vb = (b as any)[s.key] ?? 0;
+      const numA = typeof va === "string" ? parseFloat(va) || 0 : va;
+      const numB = typeof vb === "string" ? parseFloat(vb) || 0 : vb;
+      return s.asc ? numA - numB : numB - numA;
+    });
+    return sorted.slice(0, MAX_ROWS);
+  };
+
+  const SortBtn = ({ section, field, label }: { section: string; field: string; label: string }) => (
+    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort(section, field)}>
+      <span className="inline-flex items-center gap-1">{label} <ArrowUpDown className="h-3 w-3" /></span>
+    </TableHead>
+  );
+
+  const sections = [
+    {
+      id: "tabla", title: "1. Tabla General por Vaca", defaultSort: "lc305",
+      cols: [
+        { label: "Id Vaca", field: "id_vaca" },
+        { label: "Kg Grasa", field: "kgGrasa" },
+        { label: "Kg Prot", field: "kgProt" },
+        { label: "L1", field: "l1" },
+        { label: "L2", field: "l2" },
+        { label: "L3", field: "l3" },
+        { label: "L4", field: "l4" },
+        { label: "L5", field: "l5" },
+      ],
+    },
+    {
+      id: "leche", title: "2. Reporte Vacas Leche (Valor de Cría)", defaultSort: "prodCorregida",
+      cols: [
+        { label: "Id Vaca", field: "id_vaca" },
+        { label: "Valor Cría", field: "prodCorregida" },
+      ],
+    },
+    {
+      id: "ips", title: "3. Reporte IPS", defaultSort: "iip",
+      cols: [
+        { label: "Id Vaca", field: "id_vaca" },
+        { label: "IPS (días)", field: "iip" },
+      ],
+    },
+    {
+      id: "ipc", title: "4. Reporte IPC", defaultSort: "ipc",
+      cols: [
+        { label: "Id Vaca", field: "id_vaca" },
+        { label: "IPC (días)", field: "ipc" },
+      ],
+    },
+    {
+      id: "servconc", title: "5. Reporte Servicio/Concepción", defaultSort: "servConc",
+      cols: [
+        { label: "Id Vaca", field: "id_vaca" },
+        { label: "Serv/Conc", field: "servConc" },
+      ],
+    },
+    {
+      id: "iipReport", title: "6. Reporte IIP", defaultSort: "iip",
+      cols: [
+        { label: "Id Vaca", field: "id_vaca" },
+        { label: "IIP (días)", field: "iip" },
+      ],
+    },
+    {
+      id: "solidos", title: "7. Producción de Sólidos", defaultSort: "kgSolidos",
+      cols: [
+        { label: "Id Vaca", field: "id_vaca" },
+        { label: "Kg Sólidos", field: "kgSolidos" },
+      ],
+    },
+  ];
+
   return (
     <FormLayout title="Reporte Vacas">
       <div className="space-y-6">
-        {sections.map((section) => (
-          <Card key={section.number} className="border-2 border-primary/20">
-            <CardHeader className="bg-accent/50 pb-2">
-              <CardTitle className="text-lg font-bold">
-                {section.number}. {section.title}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">{section.subtitle}</p>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-primary/10">
-                    {section.columns.map((col) => (
-                      <TableHead key={col} className="font-semibold text-foreground">
-                        {col}
-                      </TableHead>
+        {sections.map((section) => {
+          const rows = sortAndSlice(vacaData, section.id, section.defaultSort);
+          return (
+            <Card key={section.id} className="border-2 border-primary/20">
+              <CardHeader className="bg-accent/50 pb-2">
+                <CardTitle className="text-lg font-bold">{section.title}</CardTitle>
+                <p className="text-sm text-muted-foreground">Máximo {MAX_ROWS} vacas — ordenar con ↑↓</p>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-primary/10">
+                      {section.cols.map((col) => (
+                        <SortBtn key={col.field} section={section.id} field={col.field} label={col.label} />
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={section.cols.length} className="text-center text-muted-foreground py-6">Sin datos</TableCell>
+                      </TableRow>
+                    ) : rows.map((row) => (
+                      <TableRow key={row.id_vaca}>
+                        {section.cols.map((col) => {
+                          const val = (row as any)[col.field];
+                          const display = typeof val === "number" ? (val > 0 ? val.toFixed(1) : "—") : (val || "—");
+                          return <TableCell key={col.field}>{display}</TableCell>;
+                        })}
+                      </TableRow>
                     ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody />
-              </Table>
-            </CardContent>
-          </Card>
-        ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </FormLayout>
   );

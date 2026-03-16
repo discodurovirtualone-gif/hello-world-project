@@ -46,6 +46,11 @@
     --sidebar-ring: 142 50% 28%;
 
     --field-highlight: 45 100% 70%;
+
+    --result-bg: 30 100% 96%;
+    --result-border: 30 80% 75%;
+    --result-accent: 30 90% 60%;
+    --result-accent-foreground: 30 50% 15%;
   }
 }
 

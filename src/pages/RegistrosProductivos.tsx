@@ -1,7 +1,6 @@
 import { useState } from "react";
 import FormLayout from "@/components/FormLayout";
 import FieldInput from "@/components/FieldInput";
-import FieldSelect from "@/components/FieldSelect";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,13 +11,6 @@ import { useGanaderia, RegistroProductivo, calcWood } from "@/context/GanaderiaC
 
 const DIAS = [30, 120, 210, 270];
 const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
-
-const calcKg = (lc305: string, pct: string) => {
-  const l = parseFloat(lc305);
-  const p = parseFloat(pct);
-  if (isNaN(l) || isNaN(p)) return "";
-  return (l * (p / 100)).toFixed(2);
-};
 
 type SortKey = "id_vaca" | "lc305_wood" | "porcentaje_grasa" | "porcentaje_proteina";
 
@@ -36,17 +28,13 @@ const RegistrosProductivos = () => {
 
   const findProd = (id_vaca: string) => registrosProductivos.find((r) => r.id_vaca === id_vaca);
 
-  // Calculate Wood305 from production records
   const calcWood305 = (id_vaca: string, reg1: string, reg2: string, reg3: string, reg4: string): string => {
     const vaca = registrosBasicos.find((v) => v.id_vaca === id_vaca);
     if (!vaca) return "";
     const potencial = parseFloat(vaca.potencial_vaca);
     if (!potencial || potencial <= 0) return "";
-
     const reales = [parseFloat(reg1), parseFloat(reg2), parseFloat(reg3), parseFloat(reg4)];
     if (reales.some(isNaN)) return "";
-
-    // Find closest potencial for each day
     const potAsignados = DIAS.map((dia, i) => {
       let closest = POTENCIALES[0];
       let minDiff = Math.abs(calcWood(POTENCIALES[0], dia) - reales[i]);
@@ -56,16 +44,13 @@ const RegistrosProductivos = () => {
       }
       return closest;
     });
-
     const promedio = potAsignados.reduce((s, v) => s + v, 0) / potAsignados.length;
     return promedio.toFixed(0);
   };
 
-  // Auto-calculate lactancias based on Wood305
   const calcLactancias = (lc305: string, numLact: number): string[] => {
     const lc = parseFloat(lc305);
     if (isNaN(lc) || lc <= 0) return Array(5).fill("");
-    // Simple model: each lactancia gets a proportion of lc305
     const factors = [0.85, 0.95, 1.0, 1.05, 1.02];
     return factors.slice(0, 5).map((f, i) => i < numLact ? (lc * f).toFixed(0) : "");
   };
@@ -87,23 +72,15 @@ const RegistrosProductivos = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form) return;
-
-    // Auto-calculate LC305
     const lc305 = calcWood305(form.id_vaca, form.reg_1_dia30, form.reg_2_dia120, form.reg_3_dia210, form.reg_4_dia270);
     const vaca = registrosBasicos.find((v) => v.id_vaca === form.id_vaca);
     const numLact = vaca ? parseInt(vaca.lactancia) || 1 : 1;
     const lacts = calcLactancias(lc305, numLact);
-
     const updatedForm: RegistroProductivo = {
-      ...form,
-      lc305_wood: lc305,
-      lact1: lacts[0] || "",
-      lact2: lacts[1] || "",
-      lact3: lacts[2] || "",
-      lact4: lacts[3] || "",
-      lact5: lacts[4] || "",
+      ...form, lc305_wood: lc305,
+      lact1: lacts[0] || "", lact2: lacts[1] || "", lact3: lacts[2] || "",
+      lact4: lacts[3] || "", lact5: lacts[4] || "",
     };
-
     const existingIdx = registrosProductivos.findIndex((r) => r.id_vaca === editVacaId);
     if (existingIdx >= 0) {
       setRegistrosProductivos((prev) => prev.map((r, i) => (i === existingIdx ? updatedForm : r)));
@@ -120,12 +97,8 @@ const RegistrosProductivos = () => {
     else { setSortKey(key); setSortAsc(true); }
   };
 
-  // Build rows from registrosBasicos
   const vacasFiltradas = registrosBasicos.filter((v) => filterText === "" || v.id_vaca.includes(filterText));
-  const rows = vacasFiltradas.map((vaca) => {
-    const prod = findProd(vaca.id_vaca);
-    return { vaca, prod };
-  });
+  const rows = vacasFiltradas.map((vaca) => ({ vaca, prod: findProd(vaca.id_vaca) }));
 
   const sorted = sortKey
     ? [...rows].sort((a, b) => {
@@ -193,20 +166,13 @@ const RegistrosProductivos = () => {
               <SortHeader label="LC305" field="lc305_wood" />
               <SortHeader label="% Grasa" field="porcentaje_grasa" />
               <SortHeader label="% Prot" field="porcentaje_proteina" />
-              <TableHead>Kg Grasa</TableHead>
-              <TableHead>Kg Prot</TableHead>
-              <TableHead>L1</TableHead>
-              <TableHead>L2</TableHead>
-              <TableHead>L3</TableHead>
-              <TableHead>L4</TableHead>
-              <TableHead>L5</TableHead>
               <TableHead className="w-16">Acc.</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sorted.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={17} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                   No hay vacas registradas. Ingrese vacas en Registros Básicos primero.
                 </TableCell>
               </TableRow>
@@ -221,13 +187,6 @@ const RegistrosProductivos = () => {
                 <TableCell className="font-bold">{prod?.lc305_wood || "—"}</TableCell>
                 <TableCell>{prod?.porcentaje_grasa || "—"}</TableCell>
                 <TableCell>{prod?.porcentaje_proteina || "—"}</TableCell>
-                <TableCell>{prod ? calcKg(prod.lc305_wood, prod.porcentaje_grasa) || "—" : "—"}</TableCell>
-                <TableCell>{prod ? calcKg(prod.lc305_wood, prod.porcentaje_proteina) || "—" : "—"}</TableCell>
-                <TableCell>{prod?.lact1 || "—"}</TableCell>
-                <TableCell>{prod?.lact2 || "—"}</TableCell>
-                <TableCell>{prod?.lact3 || "—"}</TableCell>
-                <TableCell>{prod?.lact4 || "—"}</TableCell>
-                <TableCell>{prod?.lact5 || "—"}</TableCell>
                 <TableCell>
                   <Button variant="ghost" size="icon" onClick={() => startEdit(vaca.id_vaca, vaca.ejercicio)}>
                     <Pencil className="h-4 w-4" />

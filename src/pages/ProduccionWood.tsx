@@ -69,7 +69,7 @@ const ProduccionWood = () => {
   });
 
   return (
-    <FormLayout title="Cálculo Producción Wood 305">
+    <FormLayout title="Cálculo Producción Wood 305" variant="result">
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base">Fórmula de Wood</CardTitle>

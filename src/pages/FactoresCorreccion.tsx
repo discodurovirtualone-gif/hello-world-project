@@ -60,7 +60,7 @@ const FactoresCorreccionPage = () => {
   };
 
   return (
-    <FormLayout title="Factores de Corrección">
+    <FormLayout title="Factores de Corrección" variant="result">
       <div className="flex justify-end mb-4">
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>

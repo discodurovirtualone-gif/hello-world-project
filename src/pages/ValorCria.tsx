@@ -115,7 +115,7 @@ const ValorCria = () => {
   );
 
   return (
-    <FormLayout title="Valor de Cría (BV)">
+    <FormLayout title="Valor de Cría (BV)" variant="result">
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base">Parámetros Globales</CardTitle>

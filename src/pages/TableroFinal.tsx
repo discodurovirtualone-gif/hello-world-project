@@ -1,16 +1,222 @@
+import { useState, useMemo } from "react";
 import FormLayout from "@/components/FormLayout";
-import { Table, TableHeader, TableHead, TableRow, TableBody } from "@/components/ui/table";
+import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { useGanaderia, calcWood } from "@/context/GanaderiaContext";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+
+const DIAS = [30, 120, 210, 270];
+const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
+const PIE_COLORS = [
+  "hsl(142, 50%, 40%)", "hsl(45, 90%, 55%)", "hsl(200, 60%, 50%)",
+  "hsl(0, 70%, 55%)", "hsl(280, 50%, 55%)", "hsl(170, 50%, 45%)",
+  "hsl(30, 80%, 50%)", "hsl(330, 60%, 50%)",
+];
+
+const calcKg = (lc305: number, pct: number) => lc305 * (pct / 100);
+
+const buildHistogram = (values: number[], binCount = 8) => {
+  if (values.length === 0) return [];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (min === max) return [{ range: `${min.toFixed(0)}`, count: values.length }];
+  const step = (max - min) / binCount;
+  const bins = Array.from({ length: binCount }, (_, i) => ({
+    range: `${(min + i * step).toFixed(0)}-${(min + (i + 1) * step).toFixed(0)}`,
+    count: 0,
+  }));
+  values.forEach((v) => {
+    const idx = Math.min(Math.floor((v - min) / step), binCount - 1);
+    bins[idx].count++;
+  });
+  return bins;
+};
 
 const TableroFinal = () => {
+  const { registrosBasicos, registrosProductivos, registrosReproductivos, registrosOtros } = useGanaderia();
+
+  const ejercicios = useMemo(() => {
+    const set = new Set<string>();
+    registrosBasicos.forEach((v) => { if (v.ejercicio) set.add(v.ejercicio); });
+    return Array.from(set).sort();
+  }, [registrosBasicos]);
+
+  const [selectedEjercicio, setSelectedEjercicio] = useState<string>("all");
+
+  const filteredBasicos = useMemo(() =>
+    selectedEjercicio === "all" ? registrosBasicos : registrosBasicos.filter((v) => v.ejercicio === selectedEjercicio),
+    [registrosBasicos, selectedEjercicio]
+  );
+
+  // Compute per-vaca data
+  const vacaData = useMemo(() => {
+    return filteredBasicos.map((vaca) => {
+      const prod = registrosProductivos.find((p) => p.id_vaca === vaca.id_vaca);
+      const repro = registrosReproductivos.find((r) => r.id_vaca === vaca.id_vaca);
+
+      let lc305 = 0;
+      if (prod) {
+        const reales = [parseFloat(prod.reg_1_dia30) || 0, parseFloat(prod.reg_2_dia120) || 0, parseFloat(prod.reg_3_dia210) || 0, parseFloat(prod.reg_4_dia270) || 0];
+        if (reales.some((v) => v > 0)) {
+          const pots = DIAS.map((dia, i) => {
+            let closest = POTENCIALES[0];
+            let minD = Math.abs(calcWood(POTENCIALES[0], dia) - reales[i]);
+            for (const p of POTENCIALES) { const d = Math.abs(calcWood(p, dia) - reales[i]); if (d < minD) { minD = d; closest = p; } }
+            return closest;
+          });
+          lc305 = pots.reduce((s, v) => s + v, 0) / pots.length;
+        }
+      }
+
+      const pctGrasa = prod ? parseFloat(prod.porcentaje_grasa) || 0 : 0;
+      const pctProt = prod ? parseFloat(prod.porcentaje_proteina) || 0 : 0;
+      const kgGrasa = lc305 > 0 && pctGrasa > 0 ? calcKg(lc305, pctGrasa) : 0;
+      const kgProt = lc305 > 0 && pctProt > 0 ? calcKg(lc305, pctProt) : 0;
+      const kgSolidos = kgGrasa + kgProt;
+      const ipc = repro ? parseFloat(repro.ipc) || 0 : 0;
+      const iip = repro ? parseFloat(repro.iip) || 0 : 0;
+      const edad = parseInt(vaca.edad) || 0;
+      const partos = parseInt(vaca.partos) || 0;
+      const fechaNac = vaca.fecha_nacimiento;
+      // EPP: edad al primer parto (approx from fecha_nacimiento if partos>=1)
+      const epp = partos >= 1 && fechaNac ? edad * 12 : 0; // simplified: edad in years * 12
+
+      return { id_vaca: vaca.id_vaca, lc305, kgGrasa, kgProt, kgSolidos, ipc, iip, epp, edad, partos, ejercicio: vaca.ejercicio };
+    });
+  }, [filteredBasicos, registrosProductivos, registrosReproductivos]);
+
+  // Histogram data
+  const histograms = useMemo(() => {
+    const vals = (key: keyof typeof vacaData[0]) => vacaData.map((v) => v[key] as number).filter((v) => v > 0);
+    return [
+      { title: "Leche 305 Wood", data: buildHistogram(vals("lc305")) },
+      { title: "Kg Grasa", data: buildHistogram(vals("kgGrasa")) },
+      { title: "Kg Proteína", data: buildHistogram(vals("kgProt")) },
+      { title: "Kg Sólidos Totales", data: buildHistogram(vals("kgSolidos")) },
+      { title: "IPS (días)", data: buildHistogram(vals("iip")) },
+      { title: "IPC (días)", data: buildHistogram(vals("ipc")) },
+      { title: "EPP (meses)", data: buildHistogram(vals("epp")) },
+    ];
+  }, [vacaData]);
+
+  // Summary by primíparas/multíparas
+  const summary = useMemo(() => {
+    const primiparas = filteredBasicos.filter((v) => (parseInt(v.partos) || 0) <= 1);
+    const multiparas = filteredBasicos.filter((v) => (parseInt(v.partos) || 0) > 1);
+
+    const calcAvg = (ids: string[], key: string) => {
+      const vals = ids.map((id) => {
+        const repro = registrosReproductivos.find((r) => r.id_vaca === id);
+        const otro = registrosOtros.find((r) => r.id_vaca === id);
+        const vaca = registrosBasicos.find((v) => v.id_vaca === id);
+        switch (key) {
+          case "ipc": return repro ? parseFloat(repro.ipc) || 0 : 0;
+          case "ips": return repro ? parseFloat(repro.iip) || 0 : 0;
+          case "serv_conc": return repro ? parseFloat(repro.serv_conc) || 0 : 0;
+          case "mastitis": return otro ? parseFloat(otro.mastitis) || 0 : 0;
+          case "renguera": return otro ? parseFloat(otro.renguera) || 0 : 0;
+          case "fac_parto": return otro ? parseFloat(otro.facParto) || 0 : 0;
+          case "iip": return repro ? parseFloat(repro.iip) || 0 : 0;
+          case "eep": return vaca ? (parseInt(vaca.edad) || 0) * 12 : 0;
+          default: return 0;
+        }
+      }).filter((v) => v > 0);
+      return vals.length > 0 ? (vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1) : "—";
+    };
+
+    const primiIds = primiparas.map((v) => v.id_vaca);
+    const multiIds = multiparas.map((v) => v.id_vaca);
+
+    const indicators = [
+      { label: "IPC (días)", key: "ipc" },
+      { label: "IPS (días)", key: "ips" },
+      { label: "Serv/Conc", key: "serv_conc" },
+      { label: "Ind. Mastitis", key: "mastitis" },
+      { label: "Ind. Renguera", key: "renguera" },
+      { label: "Ind. Fac. Parto", key: "fac_parto" },
+      { label: "IIP", key: "iip" },
+      { label: "EEP (meses)", key: "eep" },
+    ];
+
+    return indicators.map((ind) => ({
+      label: ind.label,
+      primiparas: calcAvg(primiIds, ind.key),
+      multiparas: calcAvg(multiIds, ind.key),
+    }));
+  }, [filteredBasicos, registrosReproductivos, registrosOtros, registrosBasicos]);
+
+  // Pie chart: age distribution
+  const ageDistribution = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredBasicos.forEach((v) => {
+      const edad = parseInt(v.edad) || 0;
+      const label = `${edad} años`;
+      counts[label] = (counts[label] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => a[0].localeCompare(b[0])).map(([name, value]) => ({ name, value }));
+  }, [filteredBasicos]);
+
   return (
     <FormLayout title="Tablero Final">
       <div className="space-y-6">
-        {/* Indicadores */}
+        {/* Filtro ejercicio */}
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium">Ejercicio:</span>
+          <Select value={selectedEjercicio} onValueChange={setSelectedEjercicio}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {ejercicios.map((e) => (
+                <SelectItem key={e} value={e}>{e}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground">
+            {filteredBasicos.length} vacas
+          </span>
+        </div>
+
+        {/* Histogramas */}
         <Card className="border-2 border-primary/20">
           <CardHeader className="bg-accent/50 pb-2">
-            <CardTitle className="text-lg font-bold">Indicadores</CardTitle>
+            <CardTitle className="text-lg font-bold">Histogramas de Frecuencia</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {filteredBasicos.length === 0 ? (
+              <p className="text-muted-foreground text-sm text-center py-8">No hay datos. Ingrese registros primero.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {histograms.map((h) => (
+                  <div key={h.title}>
+                    <p className="text-sm font-semibold mb-2">{h.title}</p>
+                    {h.data.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={h.data}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="range" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={50} />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip />
+                          <Bar dataKey="count" fill="hsl(142, 50%, 40%)" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">Sin datos</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Cuadro resumen primíparas / multíparas */}
+        <Card className="border-2 border-primary/20">
+          <CardHeader className="bg-accent/50 pb-2">
+            <CardTitle className="text-lg font-bold">Indicadores: Primíparas vs Multíparas</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
@@ -21,123 +227,40 @@ const TableroFinal = () => {
                   <TableHead className="font-semibold text-foreground">Multíparas</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody />
+              <TableBody>
+                {summary.map((row) => (
+                  <TableRow key={row.label}>
+                    <TableCell className="font-medium">{row.label}</TableCell>
+                    <TableCell>{row.primiparas}</TableCell>
+                    <TableCell>{row.multiparas}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
             </Table>
           </CardContent>
         </Card>
 
-        {/* Comparación por años */}
+        {/* Gráfico de torta - edad */}
         <Card className="border-2 border-primary/20">
           <CardHeader className="bg-accent/50 pb-2">
-            <CardTitle className="text-lg font-bold">Comparación por Años</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-primary/10">
-                  <TableHead className="font-semibold text-foreground">Indicador</TableHead>
-                  <TableHead className="font-semibold text-foreground">21/22</TableHead>
-                  <TableHead className="font-semibold text-foreground">22/23</TableHead>
-                  <TableHead className="font-semibold text-foreground">23/24</TableHead>
-                  <TableHead className="font-semibold text-foreground">24/25</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody />
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Edad de Vacas */}
-        <Card className="border-2 border-primary/20">
-          <CardHeader className="bg-accent/50 pb-2">
-            <CardTitle className="text-lg font-bold">Edad de Vacas (años)</CardTitle>
-            <p className="text-sm text-muted-foreground">Distribución por edad</p>
+            <CardTitle className="text-lg font-bold">Distribución por Edad de Vacas</CardTitle>
           </CardHeader>
           <CardContent className="p-4">
-            <p className="text-muted-foreground text-sm italic">Gráfico de torta próximamente...</p>
-          </CardContent>
-        </Card>
-
-        <Separator />
-
-        {/* Comparación de Toros */}
-        <Card className="border-2 border-primary/20">
-          <CardHeader className="bg-accent/50 pb-2">
-            <CardTitle className="text-lg font-bold">Comparación de Toros</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-primary/10">
-                  <TableHead className="font-semibold text-foreground">Toro</TableHead>
-                  <TableHead className="font-semibold text-foreground">Características del Toro</TableHead>
-                  <TableHead className="font-semibold text-foreground">Código</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody />
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Índice Integral de Hembras */}
-        <Card className="border-2 border-primary/20">
-          <CardHeader className="bg-accent/50 pb-2">
-            <CardTitle className="text-lg font-bold">Índice Integral de Hembras</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-primary/10">
-                  <TableHead className="font-semibold text-foreground">Criterio</TableHead>
-                  <TableHead className="font-semibold text-foreground">Umbral</TableHead>
-                  <TableHead className="font-semibold text-foreground">Parámetro</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody />
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Vacas con cumplimiento */}
-        <Card className="border-2 border-primary/20">
-          <CardHeader className="bg-accent/50 pb-2">
-            <CardTitle className="text-lg font-bold">Lista de Vacas que Cumplen Regla</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-primary/10">
-                  <TableHead className="font-semibold text-foreground">#Id Vaca</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody />
-            </Table>
-          </CardContent>
-        </Card>
-
-        <Separator />
-
-        {/* Propuesta de Apareamiento */}
-        <Card className="border-2 border-primary/20">
-          <CardHeader className="bg-accent/50 pb-2">
-            <CardTitle className="text-lg font-bold">Propuesta de Apareamiento</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-primary/10">
-                  <TableHead className="font-semibold text-foreground">Propuesta</TableHead>
-                  <TableHead className="font-semibold text-foreground">Vaca</TableHead>
-                  <TableHead className="font-semibold text-foreground">DEP Leche</TableHead>
-                  <TableHead className="font-semibold text-foreground">Toro</TableHead>
-                  <TableHead className="font-semibold text-foreground">Índice</TableHead>
-                  <TableHead className="font-semibold text-foreground">RDLP</TableHead>
-                  <TableHead className="font-semibold text-foreground">Características Toro</TableHead>
-                  <TableHead className="font-semibold text-foreground">Código</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody />
-            </Table>
+            {ageDistribution.length === 0 ? (
+              <p className="text-muted-foreground text-sm text-center py-8">Sin datos de edad.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie data={ageDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}>
+                    {ageDistribution.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>

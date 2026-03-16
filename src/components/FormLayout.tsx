@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button";
 interface FormLayoutProps {
   title: string;
   children: React.ReactNode;
+  variant?: "input" | "result";
 }
 
-const FormLayout = ({ title, children }: FormLayoutProps) => {
+const FormLayout = ({ title, children, variant = "input" }: FormLayoutProps) => {
+  const isResult = variant === "result";
+
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-5xl mx-auto">
+    <div className={`min-h-screen p-4 md:p-8 ${isResult ? "bg-[hsl(var(--result-bg))]" : "bg-background"}`}>
+      <div className={`mx-auto ${isResult ? "max-w-2xl" : "max-w-5xl"}`}>
         <div className="flex items-center gap-4 mb-8">
           <Link to="/">
             <Button variant="ghost" size="icon" className="rounded-full h-12 w-12">

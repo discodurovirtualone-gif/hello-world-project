@@ -56,7 +56,7 @@ const IndicadoresReproductivos = () => {
   );
 
   return (
-    <FormLayout title="Indicadores Reproductivos">
+    <FormLayout title="Indicadores Reproductivos" variant="result">
       <div className="rounded-lg border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
