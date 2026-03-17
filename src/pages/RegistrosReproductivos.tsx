@@ -113,6 +113,9 @@ const RegistrosReproductivos = () => {
 
   return (
     <FormLayout title="Registros Reproductivos">
+      <div className="flex justify-end mb-4">
+        <Button onClick={startNew}><Plus className="h-4 w-4 mr-2" /> Agregar Datos</Button>
+      </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
