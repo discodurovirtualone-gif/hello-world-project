@@ -41,6 +41,12 @@ const RegistrosReproductivos = () => {
     setOpen(true);
   };
 
+  const startNew = () => {
+    setForm(emptyRepro("", ""));
+    setEditVacaId(null);
+    setOpen(true);
+  };
+
   // Calculate IIP from parto and parto1 dates
   const calcIIP = (parto: string, parto1: string): string => {
     if (!parto || !parto1) return "";
