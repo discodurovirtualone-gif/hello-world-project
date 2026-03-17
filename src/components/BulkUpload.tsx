@@ -36,8 +36,12 @@ const BulkUpload = () => {
   const { setRegistrosBasicos, setRegistrosProductivos, setRegistrosReproductivos, setRegistrosOtros } = useGanaderia();
 
   const saveToDb = async (table: string, rows: Record<string, any>[]) => {
-    const { error } = await (supabase.from(table) as any).insert(rows);
-    if (error) console.error(`Error saving to ${table}:`, error);
+    try {
+      const { error } = await (supabase as any).from(table).insert(rows);
+      if (error) console.error(`Error saving to ${table}:`, error);
+    } catch (err) {
+      console.error(`Error saving to ${table}:`, err);
+    }
   };
 
   const processFile = (file: File) => {
