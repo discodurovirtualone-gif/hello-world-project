@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import { Plus, Pencil } from "lucide-react";
 import { useGanaderia, RegistroBasico } from "@/context/GanaderiaContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const ejercicioOptions = Array.from({ length: 10 }, (_, i) => {
   const y = 2020 + i;
