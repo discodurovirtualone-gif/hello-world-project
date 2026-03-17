@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { useGanaderia, RegistroReproductivo } from "@/context/GanaderiaContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const razaOptions = [
   { value: "holando", label: "Holando" },
