@@ -55,6 +55,15 @@ const ReporteToros = () => {
 
         if (newToros.length > 0) {
           setToros((prev) => [...prev, ...newToros]);
+          // Save to Supabase
+          const dbRows = newToros.map(t => ({
+            id_toro: t.id_toro, nombre: t.nombre, dep_leche: t.dep_leche,
+            dep_grasa: t.dep_grasa, dep_prot: t.dep_prot, dep_tph: t.dep_tph,
+            indice_inia: t.indice_inia, indice_rovere: t.indice_rovere, caracteristicas: t.caracteristicas,
+          }));
+          supabase.from('toros').insert(dbRows).then(({ error }) => {
+            if (error) console.error('Error saving toros:', error);
+          });
           toast.success(`${newToros.length} toros importados con índices calculados`);
         } else {
           toast.error("No se encontraron datos de toros válidos");
