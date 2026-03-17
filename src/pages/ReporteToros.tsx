@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { useGanaderia, Toro } from "@/context/GanaderiaContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const calcINIA = (dep_leche: number, dep_grasa: number, dep_prot: number) =>
   -0.0477 * dep_leche + 0.8317 * dep_grasa + 1.4394 * dep_prot;
