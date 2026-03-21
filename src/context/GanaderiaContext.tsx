@@ -285,7 +285,7 @@ export const GanaderiaProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const deleteRegistro = async (table: string, id_vaca: string, ejercicio: string) => {
-    await supabase.from(table).delete().eq('id_vaca', id_vaca).eq('ejercicio', ejercicio);
+    await (supabase as any).from(table).delete().eq('id_vaca', id_vaca).eq('ejercicio', ejercicio);
     switch (table) {
       case 'registros_basicos':
         setRegistrosBasicos(prev => prev.filter(r => !(r.id_vaca === id_vaca && r.ejercicio === ejercicio)));
