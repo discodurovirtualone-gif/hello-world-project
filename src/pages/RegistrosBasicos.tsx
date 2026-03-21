@@ -1,0 +1,160 @@
+import { useState } from "react";
+import FormLayout from "@/components/FormLayout";
+import FieldInput from "@/components/FieldInput";
+import FieldSelect from "@/components/FieldSelect";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { Plus, Pencil, Trash2 } from "lucide-react";
+import { useGanaderia, RegistroBasico, basicoToDb, calcEdadMeses } from "@/context/GanaderiaContext";
+import { supabase } from "@/integrations/supabase/client";
+
+const ejercicioOptions = Array.from({ length: 10 }, (_, i) => {
+  const y = 2020 + i;
+  return { value: `${y % 100}/${(y + 1) % 100}`, label: `${y % 100}/${(y + 1) % 100}` };
+});
+
+const partosOptions = [
+  { value: "Primípara", label: "Primípara" },
+  { value: "Multípara", label: "Multípara" },
+];
+
+const lactanciaOptions = Array.from({ length: 6 }, (_, i) => ({
+  value: String(i + 1), label: String(i + 1),
+}));
+
+const emptyRegistro: RegistroBasico = {
+  ejercicio: "", id_vaca: "", partos: "", fecha_nacimiento: "",
+  raza: "", lactancia: "", edad: "", potencial_vaca: "",
+};
+
+const RegistrosBasicos = () => {
+  const { registrosBasicos, setRegistrosBasicos, deleteRegistro } = useGanaderia();
+  const [form, setForm] = useState<RegistroBasico>(emptyRegistro);
+  const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [open, setOpen] = useState(false);
+
+  const update = (key: keyof RegistroBasico) => (value: string) => {
+    setForm(prev => {
+      const next = { ...prev, [key]: value };
+      // Auto-calculate edad in months when fecha_nacimiento changes
+      if (key === "fecha_nacimiento" && value) {
+        next.edad = String(calcEdadMeses(value));
+      }
+      return next;
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.id_vaca) { toast.error("El campo Id Vaca es obligatorio"); return; }
+    const dbRow = basicoToDb(form);
+    if (editIndex !== null) {
+      const old = registrosBasicos[editIndex];
+      setRegistrosBasicos(prev => prev.map((r, i) => (i === editIndex ? form : r)));
+      await supabase.from('registros_basicos').delete().eq('id_vaca', old.id_vaca).eq('ejercicio', old.ejercicio);
+      await supabase.from('registros_basicos').insert(dbRow);
+      toast.success("Registro actualizado");
+    } else {
+      setRegistrosBasicos(prev => [...prev, form]);
+      const { error } = await supabase.from('registros_basicos').insert(dbRow);
+      if (error) { toast.error("Error al guardar"); console.error(error); }
+      else toast.success("Registro guardado");
+    }
+    setForm(emptyRegistro); setEditIndex(null); setOpen(false);
+  };
+
+  const handleDelete = async (i: number) => {
+    const r = registrosBasicos[i];
+    await deleteRegistro('registros_basicos', r.id_vaca, r.ejercicio);
+    toast.success("Registro eliminado");
+  };
+
+  const startEdit = (i: number) => { setForm(registrosBasicos[i]); setEditIndex(i); setOpen(true); };
+  const startNew = () => { setForm(emptyRegistro); setEditIndex(null); setOpen(true); };
+
+  return (
+    <FormLayout title="Registros Básicos">
+      <div className="flex justify-end mb-4">
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={startNew}><Plus className="h-4 w-4 mr-2" /> Agregar Registro</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{editIndex !== null ? "Editar Registro" : "Nuevo Registro"}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FieldSelect label="Ejercicio" value={form.ejercicio} onChange={update("ejercicio")} options={ejercicioOptions} placeholder="Seleccionar" />
+                <FieldInput label="Id Vaca" value={form.id_vaca} onChange={update("id_vaca")} type="number" />
+                <FieldSelect label="Partos" value={form.partos} onChange={update("partos")} options={partosOptions} placeholder="Seleccionar" />
+                <FieldInput label="Fecha Nacimiento" value={form.fecha_nacimiento} onChange={update("fecha_nacimiento")} type="date" />
+                <FieldSelect label="Raza" value={form.raza} onChange={update("raza")} options={[{ value: "Jersey", label: "Jersey" }, { value: "Holando", label: "Holando" }, { value: "Otras", label: "Otras" }]} placeholder="Seleccionar raza" />
+                <FieldSelect label="Lactancia" value={form.lactancia} onChange={update("lactancia")} options={lactanciaOptions} placeholder="Seleccionar" />
+                <FieldInput label="Edad (meses)" value={form.edad} onChange={() => {}} type="number" />
+                <FieldInput label="Potencial Vaca (lt)" value={form.potencial_vaca} onChange={update("potencial_vaca")} type="number" highlighted />
+              </div>
+              <p className="text-xs text-muted-foreground">La edad se calcula automáticamente en meses a partir de la fecha de nacimiento.</p>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+                <Button type="submit">{editIndex !== null ? "Actualizar" : "Guardar"}</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="rounded-lg border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead>Ejercicio</TableHead>
+              <TableHead>Id Vaca</TableHead>
+              <TableHead>Partos</TableHead>
+              <TableHead>Fecha Nac.</TableHead>
+              <TableHead>Raza</TableHead>
+              <TableHead>Lactancia</TableHead>
+              <TableHead>Edad (meses)</TableHead>
+              <TableHead>Potencial</TableHead>
+              <TableHead className="w-24">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {registrosBasicos.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                  No hay registros. Haga clic en "Agregar Registro" para comenzar.
+                </TableCell>
+              </TableRow>
+            ) : registrosBasicos.map((r, i) => (
+              <TableRow key={`${r.id_vaca}-${r.ejercicio}-${i}`}>
+                <TableCell>{r.ejercicio}</TableCell>
+                <TableCell className="font-medium">{r.id_vaca}</TableCell>
+                <TableCell>{r.partos}</TableCell>
+                <TableCell>{r.fecha_nacimiento}</TableCell>
+                <TableCell>{r.raza}</TableCell>
+                <TableCell>{r.lactancia}</TableCell>
+                <TableCell>{r.edad}</TableCell>
+                <TableCell>{r.potencial_vaca}</TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => startEdit(i)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(i)} className="text-destructive hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </FormLayout>
+  );
+};
+
+export default RegistrosBasicos;

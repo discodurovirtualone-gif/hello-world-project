@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    --background: 140 20% 97%;
+    --foreground: 150 30% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 150 30% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 150 30% 10%;
+
+    --primary: 142 50% 28%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 45 90% 55%;
+    --secondary-foreground: 150 30% 10%;
+
+    --muted: 140 15% 92%;
+    --muted-foreground: 150 10% 45%;
+
+    --accent: 45 90% 55%;
+    --accent-foreground: 150 30% 10%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 140 15% 85%;
+    --input: 140 15% 85%;
+    --ring: 142 50% 28%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 142 30% 95%;
+    --sidebar-foreground: 150 30% 10%;
+    --sidebar-primary: 142 50% 28%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 45 90% 55%;
+    --sidebar-accent-foreground: 150 30% 10%;
+    --sidebar-border: 140 15% 85%;
+    --sidebar-ring: 142 50% 28%;
+
+    --field-highlight: 45 100% 70%;
+
+    --result-bg: 30 100% 96%;
+    --result-border: 30 80% 75%;
+    --result-accent: 30 90% 60%;
+    --result-accent-foreground: 30 50% 15%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-outfit;
+  }
+}
