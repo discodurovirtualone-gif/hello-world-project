@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil } from "lucide-react";
-import { useGanaderia, RegistroBasico } from "@/context/GanaderiaContext";
+import { Plus, Pencil, Trash2 } from "lucide-react";
+import { useGanaderia, RegistroBasico, basicoToDb, calcEdadMeses } from "@/context/GanaderiaContext";
 import { supabase } from "@/integrations/supabase/client";
 
 const ejercicioOptions = Array.from({ length: 10 }, (_, i) => {
@@ -21,8 +21,7 @@ const partosOptions = [
 ];
 
 const lactanciaOptions = Array.from({ length: 6 }, (_, i) => ({
-  value: String(i + 1),
-  label: String(i + 1),
+  value: String(i + 1), label: String(i + 1),
 }));
 
 const emptyRegistro: RegistroBasico = {
@@ -31,35 +30,45 @@ const emptyRegistro: RegistroBasico = {
 };
 
 const RegistrosBasicos = () => {
-  const { registrosBasicos, setRegistrosBasicos } = useGanaderia();
+  const { registrosBasicos, setRegistrosBasicos, deleteRegistro } = useGanaderia();
   const [form, setForm] = useState<RegistroBasico>(emptyRegistro);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
 
-  const update = (key: keyof RegistroBasico) => (value: string) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+  const update = (key: keyof RegistroBasico) => (value: string) => {
+    setForm(prev => {
+      const next = { ...prev, [key]: value };
+      // Auto-calculate edad in months when fecha_nacimiento changes
+      if (key === "fecha_nacimiento" && value) {
+        next.edad = String(calcEdadMeses(value));
+      }
+      return next;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.id_vaca) { toast.error("El campo Id Vaca es obligatorio"); return; }
-    const dbRow = {
-      ejercicio: form.ejercicio, id_vaca: form.id_vaca, partos: form.partos,
-      fecha_nacimiento: form.fecha_nacimiento, raza: form.raza, lactancia: form.lactancia,
-      edad: form.edad, potencial_vaca: form.potencial_vaca,
-    };
+    const dbRow = basicoToDb(form);
     if (editIndex !== null) {
-      setRegistrosBasicos((prev) => prev.map((r, i) => (i === editIndex ? form : r)));
-      // Update in Supabase: delete old + insert new (simple approach)
-      await supabase.from('registros_basicos').delete().eq('id_vaca', form.id_vaca).eq('ejercicio', form.ejercicio);
+      const old = registrosBasicos[editIndex];
+      setRegistrosBasicos(prev => prev.map((r, i) => (i === editIndex ? form : r)));
+      await supabase.from('registros_basicos').delete().eq('id_vaca', old.id_vaca).eq('ejercicio', old.ejercicio);
       await supabase.from('registros_basicos').insert(dbRow);
       toast.success("Registro actualizado");
     } else {
-      setRegistrosBasicos((prev) => [...prev, form]);
+      setRegistrosBasicos(prev => [...prev, form]);
       const { error } = await supabase.from('registros_basicos').insert(dbRow);
-      if (error) { toast.error("Error al guardar en Supabase"); console.error(error); }
-      else toast.success("Registro agregado y guardado");
+      if (error) { toast.error("Error al guardar"); console.error(error); }
+      else toast.success("Registro guardado");
     }
     setForm(emptyRegistro); setEditIndex(null); setOpen(false);
+  };
+
+  const handleDelete = async (i: number) => {
+    const r = registrosBasicos[i];
+    await deleteRegistro('registros_basicos', r.id_vaca, r.ejercicio);
+    toast.success("Registro eliminado");
   };
 
   const startEdit = (i: number) => { setForm(registrosBasicos[i]); setEditIndex(i); setOpen(true); };
@@ -84,9 +93,10 @@ const RegistrosBasicos = () => {
                 <FieldInput label="Fecha Nacimiento" value={form.fecha_nacimiento} onChange={update("fecha_nacimiento")} type="date" />
                 <FieldSelect label="Raza" value={form.raza} onChange={update("raza")} options={[{ value: "Jersey", label: "Jersey" }, { value: "Holando", label: "Holando" }, { value: "Otras", label: "Otras" }]} placeholder="Seleccionar raza" />
                 <FieldSelect label="Lactancia" value={form.lactancia} onChange={update("lactancia")} options={lactanciaOptions} placeholder="Seleccionar" />
-                <FieldInput label="Edad (años)" value={form.edad} onChange={update("edad")} type="number" />
+                <FieldInput label="Edad (meses)" value={form.edad} onChange={() => {}} type="number" />
                 <FieldInput label="Potencial Vaca (lt)" value={form.potencial_vaca} onChange={update("potencial_vaca")} type="number" highlighted />
               </div>
+              <p className="text-xs text-muted-foreground">La edad se calcula automáticamente en meses a partir de la fecha de nacimiento.</p>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
                 <Button type="submit">{editIndex !== null ? "Actualizar" : "Guardar"}</Button>
@@ -106,9 +116,9 @@ const RegistrosBasicos = () => {
               <TableHead>Fecha Nac.</TableHead>
               <TableHead>Raza</TableHead>
               <TableHead>Lactancia</TableHead>
-              <TableHead>Edad</TableHead>
+              <TableHead>Edad (meses)</TableHead>
               <TableHead>Potencial</TableHead>
-              <TableHead className="w-16">Acciones</TableHead>
+              <TableHead className="w-24">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -119,7 +129,7 @@ const RegistrosBasicos = () => {
                 </TableCell>
               </TableRow>
             ) : registrosBasicos.map((r, i) => (
-              <TableRow key={i}>
+              <TableRow key={`${r.id_vaca}-${r.ejercicio}-${i}`}>
                 <TableCell>{r.ejercicio}</TableCell>
                 <TableCell className="font-medium">{r.id_vaca}</TableCell>
                 <TableCell>{r.partos}</TableCell>
@@ -129,9 +139,14 @@ const RegistrosBasicos = () => {
                 <TableCell>{r.edad}</TableCell>
                 <TableCell>{r.potencial_vaca}</TableCell>
                 <TableCell>
-                  <Button variant="ghost" size="icon" onClick={() => startEdit(i)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => startEdit(i)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(i)} className="text-destructive hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

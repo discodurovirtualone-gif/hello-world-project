@@ -78,14 +78,12 @@ export interface FactorCorreccion {
 }
 
 export const defaultFactores: FactorCorreccion[] = [
-  // Holstein - Alto
   { raza: "Holstein", nivel_produccion: "Alto", edad: 2, lactancia: 1, factor: 1.222 },
   { raza: "Holstein", nivel_produccion: "Alto", edad: 3, lactancia: 1, factor: 1.187 },
   { raza: "Holstein", nivel_produccion: "Alto", edad: 3, lactancia: 2, factor: 1.056 },
   { raza: "Holstein", nivel_produccion: "Alto", edad: 4, lactancia: 1, factor: 1.127 },
   { raza: "Holstein", nivel_produccion: "Alto", edad: 4, lactancia: 2, factor: 1.021 },
   { raza: "Holstein", nivel_produccion: "Alto", edad: 4, lactancia: 3, factor: 1.000 },
-  // Jersey - Alto
   { raza: "Jersey", nivel_produccion: "Alto", edad: 2, lactancia: 1, factor: 1.208 },
   { raza: "Jersey", nivel_produccion: "Alto", edad: 3, lactancia: 1, factor: 1.148 },
   { raza: "Jersey", nivel_produccion: "Alto", edad: 3, lactancia: 2, factor: 1.061 },
@@ -101,7 +99,6 @@ export const defaultFactores: FactorCorreccion[] = [
   { raza: "Jersey", nivel_produccion: "Alto", edad: 7, lactancia: 4, factor: 0.982 },
   { raza: "Jersey", nivel_produccion: "Alto", edad: 7, lactancia: 5, factor: 0.984 },
   { raza: "Jersey", nivel_produccion: "Alto", edad: 8, lactancia: 5, factor: 1.008 },
-  // Jersey - Medio
   { raza: "Jersey", nivel_produccion: "Medio", edad: 2, lactancia: 1, factor: 1.208 },
   { raza: "Jersey", nivel_produccion: "Medio", edad: 3, lactancia: 1, factor: 1.159 },
   { raza: "Jersey", nivel_produccion: "Medio", edad: 3, lactancia: 2, factor: 1.060 },
@@ -117,7 +114,6 @@ export const defaultFactores: FactorCorreccion[] = [
   { raza: "Jersey", nivel_produccion: "Medio", edad: 7, lactancia: 4, factor: 0.988 },
   { raza: "Jersey", nivel_produccion: "Medio", edad: 7, lactancia: 5, factor: 0.988 },
   { raza: "Jersey", nivel_produccion: "Medio", edad: 8, lactancia: 5, factor: 1.014 },
-  // Jersey - Bajo
   { raza: "Jersey", nivel_produccion: "Bajo", edad: 2, lactancia: 1, factor: 1.182 },
   { raza: "Jersey", nivel_produccion: "Bajo", edad: 3, lactancia: 1, factor: 1.167 },
   { raza: "Jersey", nivel_produccion: "Bajo", edad: 3, lactancia: 2, factor: 1.058 },
@@ -133,10 +129,66 @@ export const defaultFactores: FactorCorreccion[] = [
   { raza: "Jersey", nivel_produccion: "Bajo", edad: 7, lactancia: 5, factor: 0.981 },
 ];
 
-// Wood formula
 export const calcWood = (potencial_vaca: number, dia: number): number => {
   return (potencial_vaca * 0.00318) * Math.pow(dia, 0.1027) * Math.exp(-0.003 * dia);
 };
+
+// Helper: calculate age in months from fecha_nacimiento
+export const calcEdadMeses = (fechaNac: string): number => {
+  if (!fechaNac) return 0;
+  const birth = new Date(fechaNac);
+  if (isNaN(birth.getTime())) return 0;
+  const now = new Date();
+  return Math.floor((now.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+};
+
+// Helper: convert value to number or null for Supabase
+const toNum = (v: string): number | null => {
+  if (!v || v === "") return null;
+  const n = parseFloat(v);
+  return isNaN(n) ? null : n;
+};
+const toInt = (v: string): number | null => {
+  if (!v || v === "") return null;
+  const n = parseInt(v);
+  return isNaN(n) ? null : n;
+};
+const toDateOrNull = (v: string): string | null => (!v || v === "") ? null : v;
+
+// Build Supabase row from app record
+export const basicoToDb = (r: RegistroBasico) => ({
+  ejercicio: r.ejercicio, id_vaca: r.id_vaca, partos: r.partos,
+  fecha_nacimiento: toDateOrNull(r.fecha_nacimiento), raza: r.raza,
+  lactancia: toInt(r.lactancia), edad: toInt(r.edad), potencial_vaca: r.potencial_vaca,
+});
+
+export const productivoToDb = (r: RegistroProductivo) => ({
+  ejercicio: r.ejercicio, id_vaca: r.id_vaca,
+  reg_1_dia30: toNum(r.reg_1_dia30), reg_2_dia120: toNum(r.reg_2_dia120),
+  reg_3_dia210: toNum(r.reg_3_dia210), reg_4_dia270: toNum(r.reg_4_dia270),
+  lc305_wood: toNum(r.lc305_wood), porcentaje_grasa: toNum(r.porcentaje_grasa),
+  porcentaje_proteina: toNum(r.porcentaje_proteina),
+  lact1: toNum(r.lact1), lact2: toNum(r.lact2), lact3: toNum(r.lact3),
+  lact4: toNum(r.lact4), lact5: toNum(r.lact5),
+});
+
+export const reproductivoToDb = (r: RegistroReproductivo) => ({
+  id_vaca: r.id_vaca, ejercicio: r.ejercicio,
+  parto: toDateOrNull(r.parto), raza: r.raza,
+  servicio1: toDateOrNull(r.servicio1), servicio2: toDateOrNull(r.servicio2),
+  servicio3: toDateOrNull(r.servicio3), concepcion1: toDateOrNull(r.concepcion1),
+  toro_usado: r.toroUsado || null,
+  aborto1: toDateOrNull(r.aborto1), aborto2: toDateOrNull(r.aborto2),
+  parto1: toDateOrNull(r.parto1),
+  iip: toNum(r.iip), ipc: toNum(r.ipc), serv_conc: toNum(r.serv_conc),
+});
+
+export const otroToDb = (r: RegistroOtro) => ({
+  id_vaca: r.id_vaca, ejercicio: r.ejercicio,
+  renguera: toInt(r.renguera), mastitis: toInt(r.mastitis),
+  fac_parto: toInt(r.facParto), longevidad: toInt(r.longevidad),
+  fortaleza_patas: toInt(r.fortalezaPatas),
+});
 
 interface GanaderiaContextType {
   registrosBasicos: RegistroBasico[];
@@ -151,11 +203,13 @@ interface GanaderiaContextType {
   setRegistrosOtros: React.Dispatch<React.SetStateAction<RegistroOtro[]>>;
   toros: Toro[];
   setToros: React.Dispatch<React.SetStateAction<Toro[]>>;
-  saveToSupabase: () => Promise<void>;
+  deleteRegistro: (table: string, id_vaca: string, ejercicio: string) => Promise<void>;
   loading: boolean;
 }
 
 const GanaderiaContext = createContext<GanaderiaContextType | undefined>(undefined);
+
+const str = (v: any): string => (v == null ? "" : String(v));
 
 export const GanaderiaProvider = ({ children }: { children: ReactNode }) => {
   const [registrosBasicos, setRegistrosBasicos] = useState<RegistroBasico[]>([]);
@@ -166,7 +220,6 @@ export const GanaderiaProvider = ({ children }: { children: ReactNode }) => {
   const [toros, setToros] = useState<Toro[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load data from Supabase on mount
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -180,37 +233,37 @@ export const GanaderiaProvider = ({ children }: { children: ReactNode }) => {
 
         if (basicos.data?.length) {
           setRegistrosBasicos(basicos.data.map((r: any) => ({
-            ejercicio: r.ejercicio || '', id_vaca: r.id_vaca || '', partos: r.partos || '',
-            fecha_nacimiento: r.fecha_nacimiento || '', raza: r.raza || '', lactancia: r.lactancia || '',
-            edad: r.edad || '', potencial_vaca: r.potencial_vaca || '',
+            ejercicio: str(r.ejercicio), id_vaca: str(r.id_vaca), partos: str(r.partos),
+            fecha_nacimiento: str(r.fecha_nacimiento), raza: str(r.raza),
+            lactancia: str(r.lactancia), edad: str(r.edad), potencial_vaca: str(r.potencial_vaca),
           })));
         }
         if (productivos.data?.length) {
           setRegistrosProductivos(productivos.data.map((r: any) => ({
-            ejercicio: r.ejercicio || '', id_vaca: r.id_vaca || '',
-            reg_1_dia30: r.reg_1_dia30 || '', reg_2_dia120: r.reg_2_dia120 || '',
-            reg_3_dia210: r.reg_3_dia210 || '', reg_4_dia270: r.reg_4_dia270 || '',
-            lc305_wood: r.lc305_wood || '', porcentaje_grasa: r.porcentaje_grasa || '',
-            porcentaje_proteina: r.porcentaje_proteina || '',
-            lact1: r.lact1 || '', lact2: r.lact2 || '', lact3: r.lact3 || '',
-            lact4: r.lact4 || '', lact5: r.lact5 || '',
+            ejercicio: str(r.ejercicio), id_vaca: str(r.id_vaca),
+            reg_1_dia30: str(r.reg_1_dia30), reg_2_dia120: str(r.reg_2_dia120),
+            reg_3_dia210: str(r.reg_3_dia210), reg_4_dia270: str(r.reg_4_dia270),
+            lc305_wood: str(r.lc305_wood), porcentaje_grasa: str(r.porcentaje_grasa),
+            porcentaje_proteina: str(r.porcentaje_proteina),
+            lact1: str(r.lact1), lact2: str(r.lact2), lact3: str(r.lact3),
+            lact4: str(r.lact4), lact5: str(r.lact5),
           })));
         }
         if (reproductivos.data?.length) {
           setRegistrosReproductivos(reproductivos.data.map((r: any) => ({
-            id_vaca: r.id_vaca || '', ejercicio: r.ejercicio || '', parto: r.parto || '',
-            raza: r.raza || '', servicio1: r.servicio1 || '', servicio2: r.servicio2 || '',
-            servicio3: r.servicio3 || '', concepcion1: r.concepcion1 || '',
-            toroUsado: r.toro_usado || '', aborto1: r.aborto1 || '', aborto2: r.aborto2 || '',
-            parto1: r.parto1 || '', iip: r.iip || '', ipc: r.ipc || '', serv_conc: r.serv_conc || '',
+            id_vaca: str(r.id_vaca), ejercicio: str(r.ejercicio), parto: str(r.parto),
+            raza: str(r.raza), servicio1: str(r.servicio1), servicio2: str(r.servicio2),
+            servicio3: str(r.servicio3), concepcion1: str(r.concepcion1),
+            toroUsado: str(r.toro_usado), aborto1: str(r.aborto1), aborto2: str(r.aborto2),
+            parto1: str(r.parto1), iip: str(r.iip), ipc: str(r.ipc), serv_conc: str(r.serv_conc),
           })));
         }
         if (otros.data?.length) {
           setRegistrosOtros(otros.data.map((r: any) => ({
-            id_vaca: r.id_vaca || '', ejercicio: r.ejercicio || '',
-            renguera: r.renguera || '', mastitis: r.mastitis || '',
-            facParto: r.fac_parto || '', longevidad: r.longevidad || '',
-            fortalezaPatas: r.fortaleza_patas || '',
+            id_vaca: str(r.id_vaca), ejercicio: str(r.ejercicio),
+            renguera: str(r.renguera), mastitis: str(r.mastitis),
+            facParto: str(r.fac_parto), longevidad: str(r.longevidad),
+            fortalezaPatas: str(r.fortaleza_patas),
           })));
         }
         if (torosData.data?.length) {
@@ -231,70 +284,22 @@ export const GanaderiaProvider = ({ children }: { children: ReactNode }) => {
     loadData();
   }, []);
 
-  const saveToSupabase = async () => {
-    // Clear and re-insert all data
-    await Promise.all([
-      supabase.from('registros_basicos').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('registros_productivos').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('registros_reproductivos').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('registros_otros').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      supabase.from('toros').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-    ]);
-
-    const inserts = [];
-    if (registrosBasicos.length > 0) {
-      inserts.push(supabase.from('registros_basicos').insert(
-        registrosBasicos.map(r => ({
-          ejercicio: r.ejercicio, id_vaca: r.id_vaca, partos: r.partos,
-          fecha_nacimiento: r.fecha_nacimiento, raza: r.raza, lactancia: r.lactancia,
-          edad: r.edad, potencial_vaca: r.potencial_vaca,
-        }))
-      ));
+  const deleteRegistro = async (table: string, id_vaca: string, ejercicio: string) => {
+    await (supabase as any).from(table).delete().eq('id_vaca', id_vaca).eq('ejercicio', ejercicio);
+    switch (table) {
+      case 'registros_basicos':
+        setRegistrosBasicos(prev => prev.filter(r => !(r.id_vaca === id_vaca && r.ejercicio === ejercicio)));
+        break;
+      case 'registros_productivos':
+        setRegistrosProductivos(prev => prev.filter(r => !(r.id_vaca === id_vaca && r.ejercicio === ejercicio)));
+        break;
+      case 'registros_reproductivos':
+        setRegistrosReproductivos(prev => prev.filter(r => !(r.id_vaca === id_vaca && r.ejercicio === ejercicio)));
+        break;
+      case 'registros_otros':
+        setRegistrosOtros(prev => prev.filter(r => !(r.id_vaca === id_vaca && r.ejercicio === ejercicio)));
+        break;
     }
-    if (registrosProductivos.length > 0) {
-      inserts.push(supabase.from('registros_productivos').insert(
-        registrosProductivos.map(r => ({
-          ejercicio: r.ejercicio, id_vaca: r.id_vaca,
-          reg_1_dia30: r.reg_1_dia30, reg_2_dia120: r.reg_2_dia120,
-          reg_3_dia210: r.reg_3_dia210, reg_4_dia270: r.reg_4_dia270,
-          lc305_wood: r.lc305_wood, porcentaje_grasa: r.porcentaje_grasa,
-          porcentaje_proteina: r.porcentaje_proteina,
-          lact1: r.lact1, lact2: r.lact2, lact3: r.lact3, lact4: r.lact4, lact5: r.lact5,
-        }))
-      ));
-    }
-    if (registrosReproductivos.length > 0) {
-      inserts.push(supabase.from('registros_reproductivos').insert(
-        registrosReproductivos.map(r => ({
-          id_vaca: r.id_vaca, ejercicio: r.ejercicio, parto: r.parto, raza: r.raza,
-          servicio1: r.servicio1, servicio2: r.servicio2, servicio3: r.servicio3,
-          concepcion1: r.concepcion1, toro_usado: r.toroUsado,
-          aborto1: r.aborto1, aborto2: r.aborto2, parto1: r.parto1,
-          iip: r.iip, ipc: r.ipc, serv_conc: r.serv_conc,
-        }))
-      ));
-    }
-    if (registrosOtros.length > 0) {
-      inserts.push(supabase.from('registros_otros').insert(
-        registrosOtros.map(r => ({
-          id_vaca: r.id_vaca, ejercicio: r.ejercicio,
-          renguera: r.renguera, mastitis: r.mastitis, fac_parto: r.facParto,
-          longevidad: r.longevidad, fortaleza_patas: r.fortalezaPatas,
-        }))
-      ));
-    }
-    if (toros.length > 0) {
-      inserts.push(supabase.from('toros').insert(
-        toros.map(r => ({
-          id_toro: r.id_toro, nombre: r.nombre,
-          dep_leche: r.dep_leche, dep_grasa: r.dep_grasa,
-          dep_prot: r.dep_prot, dep_tph: r.dep_tph,
-          indice_inia: r.indice_inia, indice_rovere: r.indice_rovere,
-          caracteristicas: r.caracteristicas,
-        }))
-      ));
-    }
-    await Promise.all(inserts);
   };
 
   return (
@@ -305,7 +310,7 @@ export const GanaderiaProvider = ({ children }: { children: ReactNode }) => {
       registrosReproductivos, setRegistrosReproductivos,
       registrosOtros, setRegistrosOtros,
       toros, setToros,
-      saveToSupabase, loading,
+      deleteRegistro, loading,
     }}>
       {children}
     </GanaderiaContext.Provider>

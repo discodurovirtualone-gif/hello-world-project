@@ -6,8 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Pencil, ArrowUpDown } from "lucide-react";
-import { useGanaderia, RegistroProductivo, calcWood } from "@/context/GanaderiaContext";
+import { Pencil, Trash2, ArrowUpDown } from "lucide-react";
+import { useGanaderia, RegistroProductivo, calcWood, productivoToDb } from "@/context/GanaderiaContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const DIAS = [30, 120, 210, 270];
 const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
@@ -15,7 +16,7 @@ const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
 type SortKey = "id_vaca" | "lc305_wood" | "porcentaje_grasa" | "porcentaje_proteina";
 
 const RegistrosProductivos = () => {
-  const { registrosBasicos, registrosProductivos, setRegistrosProductivos } = useGanaderia();
+  const { registrosBasicos, registrosProductivos, setRegistrosProductivos, deleteRegistro } = useGanaderia();
   const [editVacaId, setEditVacaId] = useState<string | null>(null);
   const [form, setForm] = useState<RegistroProductivo | null>(null);
   const [open, setOpen] = useState(false);
@@ -24,12 +25,12 @@ const RegistrosProductivos = () => {
   const [sortAsc, setSortAsc] = useState(true);
 
   const update = (key: keyof RegistroProductivo) => (value: string) =>
-    setForm((prev) => prev ? { ...prev, [key]: value } : prev);
+    setForm(prev => prev ? { ...prev, [key]: value } : prev);
 
-  const findProd = (id_vaca: string) => registrosProductivos.find((r) => r.id_vaca === id_vaca);
+  const findProd = (id_vaca: string) => registrosProductivos.find(r => r.id_vaca === id_vaca);
 
   const calcWood305 = (id_vaca: string, reg1: string, reg2: string, reg3: string, reg4: string): string => {
-    const vaca = registrosBasicos.find((v) => v.id_vaca === id_vaca);
+    const vaca = registrosBasicos.find(v => v.id_vaca === id_vaca);
     if (!vaca) return "";
     const potencial = parseFloat(vaca.potencial_vaca);
     if (!potencial || potencial <= 0) return "";
@@ -44,8 +45,7 @@ const RegistrosProductivos = () => {
       }
       return closest;
     });
-    const promedio = potAsignados.reduce((s, v) => s + v, 0) / potAsignados.length;
-    return promedio.toFixed(0);
+    return (potAsignados.reduce((s, v) => s + v, 0) / potAsignados.length).toFixed(0);
   };
 
   const calcLactancias = (lc305: string, numLact: number): string[] => {
@@ -69,11 +69,11 @@ const RegistrosProductivos = () => {
     setOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form) return;
     const lc305 = calcWood305(form.id_vaca, form.reg_1_dia30, form.reg_2_dia120, form.reg_3_dia210, form.reg_4_dia270);
-    const vaca = registrosBasicos.find((v) => v.id_vaca === form.id_vaca);
+    const vaca = registrosBasicos.find(v => v.id_vaca === form.id_vaca);
     const numLact = vaca ? parseInt(vaca.lactancia) || 1 : 1;
     const lacts = calcLactancias(lc305, numLact);
     const updatedForm: RegistroProductivo = {
@@ -81,15 +81,26 @@ const RegistrosProductivos = () => {
       lact1: lacts[0] || "", lact2: lacts[1] || "", lact3: lacts[2] || "",
       lact4: lacts[3] || "", lact5: lacts[4] || "",
     };
-    const existingIdx = registrosProductivos.findIndex((r) => r.id_vaca === editVacaId);
+    const existingIdx = registrosProductivos.findIndex(r => r.id_vaca === editVacaId);
+    const dbRow = productivoToDb(updatedForm);
+
     if (existingIdx >= 0) {
-      setRegistrosProductivos((prev) => prev.map((r, i) => (i === existingIdx ? updatedForm : r)));
+      setRegistrosProductivos(prev => prev.map((r, i) => (i === existingIdx ? updatedForm : r)));
+      await supabase.from('registros_productivos').delete().eq('id_vaca', updatedForm.id_vaca).eq('ejercicio', updatedForm.ejercicio);
+      await supabase.from('registros_productivos').insert(dbRow);
       toast.success("Registro actualizado");
     } else {
-      setRegistrosProductivos((prev) => [...prev, updatedForm]);
-      toast.success("Registro agregado");
+      setRegistrosProductivos(prev => [...prev, updatedForm]);
+      const { error } = await supabase.from('registros_productivos').insert(dbRow);
+      if (error) { toast.error("Error al guardar"); console.error(error); }
+      else toast.success("Registro guardado");
     }
     setForm(null); setEditVacaId(null); setOpen(false);
+  };
+
+  const handleDelete = async (id_vaca: string, ejercicio: string) => {
+    await deleteRegistro('registros_productivos', id_vaca, ejercicio);
+    toast.success("Registro eliminado");
   };
 
   const toggleSort = (key: SortKey) => {
@@ -97,9 +108,8 @@ const RegistrosProductivos = () => {
     else { setSortKey(key); setSortAsc(true); }
   };
 
-  const vacasFiltradas = registrosBasicos.filter((v) => filterText === "" || v.id_vaca.includes(filterText));
-  const rows = vacasFiltradas.map((vaca) => ({ vaca, prod: findProd(vaca.id_vaca) }));
-
+  const vacasFiltradas = registrosBasicos.filter(v => filterText === "" || v.id_vaca.includes(filterText));
+  const rows = vacasFiltradas.map(vaca => ({ vaca, prod: findProd(vaca.id_vaca) }));
   const sorted = sortKey
     ? [...rows].sort((a, b) => {
         const va = a.prod ? parseFloat(a.prod[sortKey]) || 0 : 0;
@@ -117,7 +127,7 @@ const RegistrosProductivos = () => {
   return (
     <FormLayout title="Registros Productivos">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-        <Input placeholder="Filtrar por Id Vaca..." value={filterText} onChange={(e) => setFilterText(e.target.value)} className="max-w-xs" />
+        <Input placeholder="Filtrar por Id Vaca..." value={filterText} onChange={e => setFilterText(e.target.value)} className="max-w-xs" />
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -166,14 +176,14 @@ const RegistrosProductivos = () => {
               <SortHeader label="LC305" field="lc305_wood" />
               <SortHeader label="% Grasa" field="porcentaje_grasa" />
               <SortHeader label="% Prot" field="porcentaje_proteina" />
-              <TableHead className="w-16">Acc.</TableHead>
+              <TableHead className="w-24">Acc.</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sorted.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
-                  No hay vacas registradas. Ingrese vacas en Registros Básicos primero.
+                  No hay vacas registradas.
                 </TableCell>
               </TableRow>
             ) : sorted.map(({ vaca, prod }, i) => (
@@ -188,9 +198,16 @@ const RegistrosProductivos = () => {
                 <TableCell>{prod?.porcentaje_grasa || "—"}</TableCell>
                 <TableCell>{prod?.porcentaje_proteina || "—"}</TableCell>
                 <TableCell>
-                  <Button variant="ghost" size="icon" onClick={() => startEdit(vaca.id_vaca, vaca.ejercicio)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => startEdit(vaca.id_vaca, vaca.ejercicio)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    {prod && (
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(vaca.id_vaca, vaca.ejercicio)} className="text-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

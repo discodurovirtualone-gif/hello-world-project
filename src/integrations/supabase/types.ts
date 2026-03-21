@@ -17,36 +17,36 @@ export type Database = {
       registros_basicos: {
         Row: {
           created_at: string
-          edad: string | null
+          edad: number | null
           ejercicio: string
           fecha_nacimiento: string | null
           id: string
           id_vaca: string
-          lactancia: string
+          lactancia: number
           partos: string
           potencial_vaca: string | null
           raza: string
         }
         Insert: {
           created_at?: string
-          edad?: string | null
+          edad?: number | null
           ejercicio?: string
           fecha_nacimiento?: string | null
           id?: string
           id_vaca: string
-          lactancia?: string
+          lactancia: number
           partos?: string
           potencial_vaca?: string | null
           raza?: string
         }
         Update: {
           created_at?: string
-          edad?: string | null
+          edad?: number | null
           ejercicio?: string
           fecha_nacimiento?: string | null
           id?: string
           id_vaca?: string
-          lactancia?: string
+          lactancia?: number
           partos?: string
           potencial_vaca?: string | null
           raza?: string
@@ -57,35 +57,35 @@ export type Database = {
         Row: {
           created_at: string
           ejercicio: string
-          fac_parto: string | null
-          fortaleza_patas: string | null
+          fac_parto: number | null
+          fortaleza_patas: number | null
           id: string
           id_vaca: string
-          longevidad: string | null
-          mastitis: string | null
-          renguera: string | null
+          longevidad: number | null
+          mastitis: number | null
+          renguera: number | null
         }
         Insert: {
           created_at?: string
           ejercicio?: string
-          fac_parto?: string | null
-          fortaleza_patas?: string | null
+          fac_parto?: number | null
+          fortaleza_patas?: number | null
           id?: string
           id_vaca: string
-          longevidad?: string | null
-          mastitis?: string | null
-          renguera?: string | null
+          longevidad?: number | null
+          mastitis?: number | null
+          renguera?: number | null
         }
         Update: {
           created_at?: string
           ejercicio?: string
-          fac_parto?: string | null
-          fortaleza_patas?: string | null
+          fac_parto?: number | null
+          fortaleza_patas?: number | null
           id?: string
           id_vaca?: string
-          longevidad?: string | null
-          mastitis?: string | null
-          renguera?: string | null
+          longevidad?: number | null
+          mastitis?: number | null
+          renguera?: number | null
         }
         Relationships: []
       }
@@ -95,54 +95,54 @@ export type Database = {
           ejercicio: string
           id: string
           id_vaca: string
-          lact1: string | null
-          lact2: string | null
-          lact3: string | null
-          lact4: string | null
-          lact5: string | null
-          lc305_wood: string | null
-          porcentaje_grasa: string | null
-          porcentaje_proteina: string | null
-          reg_1_dia30: string | null
-          reg_2_dia120: string | null
-          reg_3_dia210: string | null
-          reg_4_dia270: string | null
+          lact1: number | null
+          lact2: number | null
+          lact3: number | null
+          lact4: number | null
+          lact5: number | null
+          lc305_wood: number | null
+          porcentaje_grasa: number | null
+          porcentaje_proteina: number | null
+          reg_1_dia30: number | null
+          reg_2_dia120: number | null
+          reg_3_dia210: number | null
+          reg_4_dia270: number | null
         }
         Insert: {
           created_at?: string
           ejercicio?: string
           id?: string
           id_vaca: string
-          lact1?: string | null
-          lact2?: string | null
-          lact3?: string | null
-          lact4?: string | null
-          lact5?: string | null
-          lc305_wood?: string | null
-          porcentaje_grasa?: string | null
-          porcentaje_proteina?: string | null
-          reg_1_dia30?: string | null
-          reg_2_dia120?: string | null
-          reg_3_dia210?: string | null
-          reg_4_dia270?: string | null
+          lact1?: number | null
+          lact2?: number | null
+          lact3?: number | null
+          lact4?: number | null
+          lact5?: number | null
+          lc305_wood?: number | null
+          porcentaje_grasa?: number | null
+          porcentaje_proteina?: number | null
+          reg_1_dia30?: number | null
+          reg_2_dia120?: number | null
+          reg_3_dia210?: number | null
+          reg_4_dia270?: number | null
         }
         Update: {
           created_at?: string
           ejercicio?: string
           id?: string
           id_vaca?: string
-          lact1?: string | null
-          lact2?: string | null
-          lact3?: string | null
-          lact4?: string | null
-          lact5?: string | null
-          lc305_wood?: string | null
-          porcentaje_grasa?: string | null
-          porcentaje_proteina?: string | null
-          reg_1_dia30?: string | null
-          reg_2_dia120?: string | null
-          reg_3_dia210?: string | null
-          reg_4_dia270?: string | null
+          lact1?: number | null
+          lact2?: number | null
+          lact3?: number | null
+          lact4?: number | null
+          lact5?: number | null
+          lc305_wood?: number | null
+          porcentaje_grasa?: number | null
+          porcentaje_proteina?: number | null
+          reg_1_dia30?: number | null
+          reg_2_dia120?: number | null
+          reg_3_dia210?: number | null
+          reg_4_dia270?: number | null
         }
         Relationships: []
       }
@@ -155,12 +155,12 @@ export type Database = {
           ejercicio: string
           id: string
           id_vaca: string
-          iip: string | null
-          ipc: string | null
+          iip: number | null
+          ipc: number | null
           parto: string | null
           parto1: string | null
           raza: string | null
-          serv_conc: string | null
+          serv_conc: number | null
           servicio1: string | null
           servicio2: string | null
           servicio3: string | null
@@ -174,12 +174,12 @@ export type Database = {
           ejercicio?: string
           id?: string
           id_vaca: string
-          iip?: string | null
-          ipc?: string | null
+          iip?: number | null
+          ipc?: number | null
           parto?: string | null
           parto1?: string | null
           raza?: string | null
-          serv_conc?: string | null
+          serv_conc?: number | null
           servicio1?: string | null
           servicio2?: string | null
           servicio3?: string | null
@@ -193,12 +193,12 @@ export type Database = {
           ejercicio?: string
           id?: string
           id_vaca?: string
-          iip?: string | null
-          ipc?: string | null
+          iip?: number | null
+          ipc?: number | null
           parto?: string | null
           parto1?: string | null
           raza?: string | null
-          serv_conc?: string | null
+          serv_conc?: number | null
           servicio1?: string | null
           servicio2?: string | null
           servicio3?: string | null

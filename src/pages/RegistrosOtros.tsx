@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Pencil } from "lucide-react";
-import { useGanaderia, RegistroOtro } from "@/context/GanaderiaContext";
+import { Pencil, Trash2 } from "lucide-react";
+import { useGanaderia, RegistroOtro, otroToDb } from "@/context/GanaderiaContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const scoreOptions = Array.from({ length: 5 }, (_, i) => ({
-  value: String(i + 1),
-  label: String(i + 1),
+  value: String(i + 1), label: String(i + 1),
 }));
 
 const emptyOtro = (id_vaca: string, ejercicio: string): RegistroOtro => ({
@@ -18,15 +18,15 @@ const emptyOtro = (id_vaca: string, ejercicio: string): RegistroOtro => ({
 });
 
 const RegistrosOtros = () => {
-  const { registrosBasicos, registrosOtros, setRegistrosOtros } = useGanaderia();
+  const { registrosBasicos, registrosOtros, setRegistrosOtros, deleteRegistro } = useGanaderia();
   const [form, setForm] = useState<RegistroOtro | null>(null);
   const [editVacaId, setEditVacaId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
 
   const update = (key: keyof RegistroOtro) => (value: string) =>
-    setForm((prev) => prev ? { ...prev, [key]: value } : prev);
+    setForm(prev => prev ? { ...prev, [key]: value } : prev);
 
-  const findOtro = (id_vaca: string) => registrosOtros.find((r) => r.id_vaca === id_vaca);
+  const findOtro = (id_vaca: string) => registrosOtros.find(r => r.id_vaca === id_vaca);
 
   const startEdit = (id_vaca: string, ejercicio: string) => {
     const existing = findOtro(id_vaca);
@@ -35,18 +35,29 @@ const RegistrosOtros = () => {
     setOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form) return;
-    const existingIdx = registrosOtros.findIndex((r) => r.id_vaca === editVacaId);
+    const dbRow = otroToDb(form);
+    const existingIdx = registrosOtros.findIndex(r => r.id_vaca === editVacaId);
+
     if (existingIdx >= 0) {
-      setRegistrosOtros((prev) => prev.map((r, i) => (i === existingIdx ? form : r)));
+      setRegistrosOtros(prev => prev.map((r, i) => (i === existingIdx ? form : r)));
+      await supabase.from('registros_otros').delete().eq('id_vaca', form.id_vaca).eq('ejercicio', form.ejercicio);
+      await supabase.from('registros_otros').insert(dbRow);
       toast.success("Registro actualizado");
     } else {
-      setRegistrosOtros((prev) => [...prev, form]);
-      toast.success("Registro guardado");
+      setRegistrosOtros(prev => [...prev, form]);
+      const { error } = await supabase.from('registros_otros').insert(dbRow);
+      if (error) { toast.error("Error al guardar"); console.error(error); }
+      else toast.success("Registro guardado");
     }
     setForm(null); setEditVacaId(null); setOpen(false);
+  };
+
+  const handleDelete = async (id_vaca: string, ejercicio: string) => {
+    await deleteRegistro('registros_otros', id_vaca, ejercicio);
+    toast.success("Registro eliminado");
   };
 
   return (
@@ -85,14 +96,14 @@ const RegistrosOtros = () => {
               <TableHead>Fac. Parto</TableHead>
               <TableHead>Longevidad</TableHead>
               <TableHead>Fort. Patas</TableHead>
-              <TableHead className="w-16">Acc.</TableHead>
+              <TableHead className="w-24">Acc.</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {registrosBasicos.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                  No hay vacas registradas. Ingrese vacas en Registros Básicos primero.
+                  No hay vacas registradas.
                 </TableCell>
               </TableRow>
             ) : registrosBasicos.map((vaca, i) => {
@@ -107,9 +118,16 @@ const RegistrosOtros = () => {
                   <TableCell>{otro?.longevidad || "—"}</TableCell>
                   <TableCell>{otro?.fortalezaPatas || "—"}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => startEdit(vaca.id_vaca, vaca.ejercicio)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => startEdit(vaca.id_vaca, vaca.ejercicio)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      {otro && (
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(vaca.id_vaca, vaca.ejercicio)} className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               );

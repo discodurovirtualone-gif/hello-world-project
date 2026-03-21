@@ -1,20 +1,13 @@
 import { useState } from "react";
 import FormLayout from "@/components/FormLayout";
 import FieldInput from "@/components/FieldInput";
-import FieldSelect from "@/components/FieldSelect";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Pencil, Plus } from "lucide-react";
-import { useGanaderia, RegistroReproductivo } from "@/context/GanaderiaContext";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useGanaderia, RegistroReproductivo, reproductivoToDb } from "@/context/GanaderiaContext";
 import { supabase } from "@/integrations/supabase/client";
-
-const razaOptions = [
-  { value: "holando", label: "Holando" },
-  { value: "jersey", label: "Jersey" },
-  { value: "otra", label: "Otra" },
-];
 
 const emptyRepro = (id_vaca: string, ejercicio: string): RegistroReproductivo => ({
   id_vaca, ejercicio, parto: "", raza: "",
@@ -24,15 +17,15 @@ const emptyRepro = (id_vaca: string, ejercicio: string): RegistroReproductivo =>
 });
 
 const RegistrosReproductivos = () => {
-  const { registrosBasicos, registrosReproductivos, setRegistrosReproductivos } = useGanaderia();
+  const { registrosBasicos, registrosReproductivos, setRegistrosReproductivos, deleteRegistro } = useGanaderia();
   const [form, setForm] = useState<RegistroReproductivo | null>(null);
   const [editVacaId, setEditVacaId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
 
   const update = (key: keyof RegistroReproductivo) => (value: string) =>
-    setForm((prev) => prev ? { ...prev, [key]: value } : prev);
+    setForm(prev => prev ? { ...prev, [key]: value } : prev);
 
-  const findRepro = (id_vaca: string) => registrosReproductivos.find((r) => r.id_vaca === id_vaca);
+  const findRepro = (id_vaca: string) => registrosReproductivos.find(r => r.id_vaca === id_vaca);
 
   const startEdit = (id_vaca: string, ejercicio: string) => {
     const existing = findRepro(id_vaca);
@@ -41,31 +34,22 @@ const RegistrosReproductivos = () => {
     setOpen(true);
   };
 
-  const startNew = () => {
-    setForm(emptyRepro("", ""));
-    setEditVacaId(null);
-    setOpen(true);
-  };
+  const startNew = () => { setForm(emptyRepro("", "")); setEditVacaId(null); setOpen(true); };
 
-  // Calculate IIP from parto and parto1 dates
   const calcIIP = (parto: string, parto1: string): string => {
     if (!parto || !parto1) return "";
-    const d1 = new Date(parto);
-    const d2 = new Date(parto1);
+    const d1 = new Date(parto), d2 = new Date(parto1);
     const diff = Math.abs(d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24);
     return diff > 0 ? Math.round(diff).toString() : "";
   };
 
-  // Calculate IPC from parto and concepcion1 dates
   const calcIPC = (parto: string, concepcion1: string): string => {
     if (!parto || !concepcion1) return "";
-    const d1 = new Date(parto);
-    const d2 = new Date(concepcion1);
+    const d1 = new Date(parto), d2 = new Date(concepcion1);
     const diff = (d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24);
     return diff > 0 ? Math.round(diff).toString() : "";
   };
 
-  // Calculate services per conception
   const calcServConc = (s1: string, s2: string, s3: string): string => {
     let count = 0;
     if (s1) count++;
@@ -86,29 +70,26 @@ const RegistrosReproductivos = () => {
       serv_conc: calcServConc(form.servicio1, form.servicio2, form.servicio3),
     };
 
-    const dbRow = {
-      id_vaca: updatedForm.id_vaca, ejercicio: updatedForm.ejercicio, parto: updatedForm.parto,
-      raza: updatedForm.raza, servicio1: updatedForm.servicio1, servicio2: updatedForm.servicio2,
-      servicio3: updatedForm.servicio3, concepcion1: updatedForm.concepcion1,
-      toro_usado: updatedForm.toroUsado, aborto1: updatedForm.aborto1, aborto2: updatedForm.aborto2,
-      parto1: updatedForm.parto1, iip: updatedForm.iip, ipc: updatedForm.ipc, serv_conc: updatedForm.serv_conc,
-    };
+    const dbRow = reproductivoToDb(updatedForm);
+    const existingIdx = registrosReproductivos.findIndex(r => r.id_vaca === editVacaId);
 
-    const existingIdx = registrosReproductivos.findIndex((r) => r.id_vaca === editVacaId);
     if (existingIdx >= 0) {
-      setRegistrosReproductivos((prev) => prev.map((r, i) => (i === existingIdx ? updatedForm : r)));
+      setRegistrosReproductivos(prev => prev.map((r, i) => (i === existingIdx ? updatedForm : r)));
       await supabase.from('registros_reproductivos').delete().eq('id_vaca', updatedForm.id_vaca).eq('ejercicio', updatedForm.ejercicio);
       await supabase.from('registros_reproductivos').insert(dbRow);
-      toast.success("Registro reproductivo actualizado");
+      toast.success("Registro actualizado");
     } else {
-      setRegistrosReproductivos((prev) => [...prev, updatedForm]);
+      setRegistrosReproductivos(prev => [...prev, updatedForm]);
       const { error } = await supabase.from('registros_reproductivos').insert(dbRow);
       if (error) { toast.error("Error al guardar"); console.error(error); }
-      else toast.success("Registro reproductivo guardado en Supabase");
+      else toast.success("Registro guardado");
     }
-    setForm(null);
-    setEditVacaId(null);
-    setOpen(false);
+    setForm(null); setEditVacaId(null); setOpen(false);
+  };
+
+  const handleDelete = async (id_vaca: string, ejercicio: string) => {
+    await deleteRegistro('registros_reproductivos', id_vaca, ejercicio);
+    toast.success("Registro eliminado");
   };
 
   return (
@@ -124,8 +105,8 @@ const RegistrosReproductivos = () => {
           {form && (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <FieldInput label="Id Vaca" value={form.id_vaca} onChange={() => {}} />
-                <FieldInput label="Ejercicio" value={form.ejercicio} onChange={() => {}} />
+                <FieldInput label="Id Vaca" value={form.id_vaca} onChange={editVacaId ? () => {} : update("id_vaca")} />
+                <FieldInput label="Ejercicio" value={form.ejercicio} onChange={editVacaId ? () => {} : update("ejercicio")} />
                 <FieldInput label="Parto" value={form.parto} onChange={update("parto")} type="date" highlighted />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -163,17 +144,17 @@ const RegistrosReproductivos = () => {
               <TableHead>Serv 3</TableHead>
               <TableHead>Concepción</TableHead>
               <TableHead>Parto 1</TableHead>
-              <TableHead>IIP (días)</TableHead>
-              <TableHead>IPC (días)</TableHead>
-              <TableHead>Serv/Conc</TableHead>
-              <TableHead className="w-16">Acc.</TableHead>
+              <TableHead>IIP</TableHead>
+              <TableHead>IPC</TableHead>
+              <TableHead>S/C</TableHead>
+              <TableHead className="w-24">Acc.</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {registrosBasicos.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
-                  No hay vacas registradas. Ingrese vacas en Registros Básicos primero.
+                  No hay vacas registradas.
                 </TableCell>
               </TableRow>
             ) : registrosBasicos.map((vaca, i) => {
@@ -192,9 +173,16 @@ const RegistrosReproductivos = () => {
                   <TableCell>{repro?.ipc || "—"}</TableCell>
                   <TableCell>{repro?.serv_conc || "—"}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => startEdit(vaca.id_vaca, vaca.ejercicio)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => startEdit(vaca.id_vaca, vaca.ejercicio)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      {repro && (
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(vaca.id_vaca, vaca.ejercicio)} className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               );
