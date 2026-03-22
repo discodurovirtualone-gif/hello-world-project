@@ -14,6 +14,12 @@ const PRODUCTIVOS_COLS = ["ejercicio", "id_vaca", "reg_1_dia30", "reg_2_dia120",
 const REPRODUCTIVOS_COLS = ["ejercicio", "id_vaca", "parto", "raza", "servicio1", "servicio2", "servicio3", "concepcion1", "toroUsado", "aborto1", "aborto2", "parto1"];
 const OTROS_COLS = ["ejercicio", "id_vaca", "renguera", "mastitis", "facParto", "longevidad", "fortalezaPatas"];
 
+// Aliases for columns that may appear with different names in Excel
+const COL_ALIASES: Record<string, string[]> = {
+  facparto: ["facilidadalparto", "facilidadparto", "facparto", "fac_parto"],
+  fortalezapatas: ["fortalezadepatas", "fortalezapatas", "fortaleza_patas", "fortpatas"],
+};
+
 const ALL_SECTIONS = [
   { name: "Básicos", cols: BASICOS_COLS, table: "registros_basicos" },
   { name: "Productivos", cols: PRODUCTIVOS_COLS, table: "registros_productivos" },
