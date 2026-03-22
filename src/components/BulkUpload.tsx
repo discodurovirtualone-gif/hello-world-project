@@ -14,6 +14,12 @@ const PRODUCTIVOS_COLS = ["ejercicio", "id_vaca", "reg_1_dia30", "reg_2_dia120",
 const REPRODUCTIVOS_COLS = ["ejercicio", "id_vaca", "parto", "raza", "servicio1", "servicio2", "servicio3", "concepcion1", "toroUsado", "aborto1", "aborto2", "parto1"];
 const OTROS_COLS = ["ejercicio", "id_vaca", "renguera", "mastitis", "facParto", "longevidad", "fortalezaPatas"];
 
+// Aliases for columns that may appear with different names in Excel
+const COL_ALIASES: Record<string, string[]> = {
+  facparto: ["facilidadalparto", "facilidadparto", "facparto", "fac_parto"],
+  fortalezapatas: ["fortalezadepatas", "fortalezapatas", "fortaleza_patas", "fortpatas"],
+};
+
 const ALL_SECTIONS = [
   { name: "Básicos", cols: BASICOS_COLS, table: "registros_basicos" },
   { name: "Productivos", cols: PRODUCTIVOS_COLS, table: "registros_productivos" },
@@ -94,7 +100,14 @@ const BulkUpload = () => {
           const rows = json.map((row) => {
             const mapped: Record<string, string> = {};
             for (const col of sec.cols) {
-              const key = Object.keys(row).find((k) => normalize(k) === normalize(col));
+              const normCol = normalize(col);
+              // Try direct match first, then aliases
+              const aliases = COL_ALIASES[normCol] || [];
+              const allNorms = [normCol, ...aliases];
+              const key = Object.keys(row).find((k) => {
+                const nk = normalize(k);
+                return allNorms.includes(nk);
+              });
               let val = key ? row[key] : "";
               // Convert Excel date serials
               if (DATE_COLS.has(col)) val = excelDateToString(val);
@@ -125,9 +138,34 @@ const BulkUpload = () => {
             const { error } = await supabase.from('registros_productivos').insert(dbRows);
             if (error) { errors.push(`Productivos DB: ${error.message}`); console.error(error); }
           } else if (sec.name === "Reproductivos") {
-            const appRows: RegistroReproductivo[] = rows.map(r => ({
-              ...r, iip: "", ipc: "", serv_conc: "",
-            } as RegistroReproductivo));
+            const appRows: RegistroReproductivo[] = rows.map(r => {
+              const parto = r.parto || "";
+              const parto1 = r.parto1 || "";
+              const concepcion1 = r.concepcion1 || "";
+              const s1 = r.servicio1 || "";
+              const s2 = r.servicio2 || "";
+              const s3 = r.servicio3 || "";
+              // Calculate IIP
+              let iip = "";
+              if (parto && parto1) {
+                const d1 = new Date(parto), d2 = new Date(parto1);
+                const diff = Math.abs(d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24);
+                if (diff > 0) iip = Math.round(diff).toString();
+              }
+              // Calculate IPC
+              let ipc = "";
+              if (parto && concepcion1) {
+                const d1 = new Date(parto), d2 = new Date(concepcion1);
+                const diff = (d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24);
+                if (diff > 0) ipc = Math.round(diff).toString();
+              }
+              // Calculate S/C
+              let serv_conc = "";
+              const sCount = [s1, s2, s3].filter(Boolean).length;
+              if (sCount > 0) serv_conc = sCount.toString();
+
+              return { ...r, iip, ipc, serv_conc, toroUsado: r.toroUsado || "" } as RegistroReproductivo;
+            });
             setRegistrosReproductivos(prev => [...prev, ...appRows]);
             const dbRows = appRows.map(reproductivoToDb);
             const { error } = await supabase.from('registros_reproductivos').insert(dbRows);

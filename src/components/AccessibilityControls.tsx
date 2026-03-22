@@ -1,17 +1,18 @@
 import { useState, useEffect } from "react";
-import { Sun, Moon, Type, ZoomIn, ZoomOut } from "lucide-react";
+import { Sun, Moon, Type, ZoomIn, ZoomOut, Bold } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const FONT_SIZES = [14, 16, 18, 20, 24];
 const BG_MODES = [
-  { label: "Normal", bg: "", text: "" },
-  { label: "Alto contraste", bg: "hsl(60, 100%, 95%)", text: "hsl(0, 0%, 5%)" },
-  { label: "Oscuro", bg: "hsl(0, 0%, 10%)", text: "hsl(0, 0%, 95%)" },
+  { label: "Normal", className: "" },
+  { label: "Alto contraste", className: "a11y-high-contrast" },
+  { label: "Oscuro", className: "a11y-dark" },
 ];
 
 const AccessibilityControls = () => {
   const [sizeIdx, setSizeIdx] = useState(1);
   const [bgIdx, setBgIdx] = useState(0);
+  const [bold, setBold] = useState(false);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -19,19 +20,21 @@ const AccessibilityControls = () => {
   }, [sizeIdx]);
 
   useEffect(() => {
-    const mode = BG_MODES[bgIdx];
-    if (mode.bg) {
-      document.documentElement.style.setProperty("--a11y-bg", mode.bg);
-      document.documentElement.style.setProperty("--a11y-text", mode.text);
-      document.body.style.backgroundColor = mode.bg;
-      document.body.style.color = mode.text;
-    } else {
-      document.body.style.backgroundColor = "";
-      document.body.style.color = "";
-      document.documentElement.style.removeProperty("--a11y-bg");
-      document.documentElement.style.removeProperty("--a11y-text");
+    // Remove all a11y classes first
+    document.documentElement.classList.remove("a11y-high-contrast", "a11y-dark");
+    const cls = BG_MODES[bgIdx].className;
+    if (cls) {
+      document.documentElement.classList.add(cls);
     }
   }, [bgIdx]);
+
+  useEffect(() => {
+    if (bold) {
+      document.documentElement.classList.add("a11y-bold");
+    } else {
+      document.documentElement.classList.remove("a11y-bold");
+    }
+  }, [bold]);
 
   const incSize = () => setSizeIdx(i => Math.min(i + 1, FONT_SIZES.length - 1));
   const decSize = () => setSizeIdx(i => Math.max(i - 1, 0));
@@ -50,7 +53,7 @@ const AccessibilityControls = () => {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 rounded-xl bg-card border-2 border-border shadow-2xl p-4 space-y-3 min-w-[200px]">
+    <div className="fixed bottom-4 right-4 z-50 rounded-xl bg-card border-2 border-border shadow-2xl p-4 space-y-3 min-w-[220px]">
       <div className="flex items-center justify-between">
         <span className="text-sm font-bold">Accesibilidad</span>
         <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground text-lg leading-none">&times;</button>
@@ -63,6 +66,13 @@ const AccessibilityControls = () => {
         <span className="text-xs font-mono w-8 text-center">{FONT_SIZES[sizeIdx]}</span>
         <Button variant="outline" size="icon" className="h-8 w-8" onClick={incSize} disabled={sizeIdx === FONT_SIZES.length - 1}>
           <ZoomIn className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-xs flex-1">Texto grueso</span>
+        <Button variant={bold ? "default" : "outline"} size="sm" className="h-8 gap-1" onClick={() => setBold(!bold)}>
+          <Bold className="h-4 w-4" />
+          <span className="text-xs">{bold ? "Sí" : "No"}</span>
         </Button>
       </div>
       <div className="flex items-center gap-2">

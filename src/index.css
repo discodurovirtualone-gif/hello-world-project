@@ -52,6 +52,42 @@
     --result-accent: 30 90% 60%;
     --result-accent-foreground: 30 50% 15%;
   }
+
+  .a11y-high-contrast {
+    --background: 60 100% 95%;
+    --foreground: 0 0% 5%;
+    --card: 60 100% 92%;
+    --card-foreground: 0 0% 5%;
+    --muted: 60 30% 85%;
+    --muted-foreground: 0 0% 20%;
+    --border: 0 0% 30%;
+    --input: 0 0% 30%;
+  }
+
+  .a11y-dark {
+    --background: 0 0% 10%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 95%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 70%;
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 95%;
+    --border: 0 0% 30%;
+    --input: 0 0% 30%;
+    --primary: 142 50% 40%;
+    --primary-foreground: 0 0% 100%;
+  }
+
+  .a11y-bold {
+    font-weight: 600;
+  }
+  .a11y-bold * {
+    font-weight: inherit;
+  }
+  .a11y-bold .font-bold, .a11y-bold .font-semibold, .a11y-bold .font-medium {
+    font-weight: 800;
+  }
 }
 
 @layer base {
