@@ -133,14 +133,18 @@ export const calcWood = (potencial_vaca: number, dia: number): number => {
   return (potencial_vaca * 0.00318) * Math.pow(dia, 0.1027) * Math.exp(-0.003 * dia);
 };
 
-// Helper: calculate age in months from fecha_nacimiento
-export const calcEdadMeses = (fechaNac: string): number => {
+// Helper: calculate age in years from fecha_nacimiento
+export const calcEdadAnios = (fechaNac: string): number => {
   if (!fechaNac) return 0;
   const birth = new Date(fechaNac);
   if (isNaN(birth.getTime())) return 0;
   const now = new Date();
-  return Math.floor((now.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+  const diffYears = (now.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+  return Math.max(0, Math.floor(diffYears));
 };
+
+// Keep backward compat alias
+export const calcEdadMeses = calcEdadAnios;
 
 // Helper: convert value to number or null for Supabase
 const toNum = (v: string): number | null => {

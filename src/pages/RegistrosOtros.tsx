@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Pencil, Trash2 } from "lucide-react";
 import { useGanaderia, RegistroOtro, otroToDb } from "@/context/GanaderiaContext";
 import { supabase } from "@/integrations/supabase/client";
+import PdfReportButton from "@/components/PdfReportButton";
 
 const scoreOptions = Array.from({ length: 5 }, (_, i) => ({
   value: String(i + 1), label: String(i + 1),
@@ -62,6 +63,16 @@ const RegistrosOtros = () => {
 
   return (
     <FormLayout title="Registros Otros">
+      <div className="flex justify-end mb-4">
+        <PdfReportButton
+          title="Registros Otros"
+          headers={["Ejercicio", "Id Vaca", "Renguera", "Mastitis", "Fac. Parto", "Longevidad", "Fort. Patas"]}
+          rows={registrosBasicos.map(v => {
+            const o = registrosOtros.find(r => r.id_vaca === v.id_vaca);
+            return [v.ejercicio, v.id_vaca, o?.renguera||"", o?.mastitis||"", o?.facParto||"", o?.longevidad||"", o?.fortalezaPatas||""];
+          })}
+        />
+      </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>

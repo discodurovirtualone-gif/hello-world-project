@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { useGanaderia, calcWood } from "@/context/GanaderiaContext";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import PdfReportButton from "@/components/PdfReportButton";
 
 const DIAS = [30, 120, 210, 270];
 const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
@@ -161,8 +162,13 @@ const TableroFinal = () => {
   return (
     <FormLayout title="Tablero Final">
       <div className="space-y-6">
-        {/* Filtro ejercicio */}
+        {/* PDF + Filtro ejercicio */}
         <div className="flex items-center gap-4">
+          <PdfReportButton
+            title="Tablero Final"
+            headers={["Indicador", "Primíparas", "Multíparas"]}
+            rows={summary.map(s => [s.label, s.primiparas, s.multiparas])}
+          />
           <span className="text-sm font-medium">Ejercicio:</span>
           <Select value={selectedEjercicio} onValueChange={setSelectedEjercicio}>
             <SelectTrigger className="w-40">

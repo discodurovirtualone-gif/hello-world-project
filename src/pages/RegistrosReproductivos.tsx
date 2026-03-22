@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useGanaderia, RegistroReproductivo, reproductivoToDb } from "@/context/GanaderiaContext";
 import { supabase } from "@/integrations/supabase/client";
+import PdfReportButton from "@/components/PdfReportButton";
 
 const emptyRepro = (id_vaca: string, ejercicio: string): RegistroReproductivo => ({
   id_vaca, ejercicio, parto: "", raza: "",
@@ -94,7 +95,15 @@ const RegistrosReproductivos = () => {
 
   return (
     <FormLayout title="Registros Reproductivos">
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-between items-center mb-4">
+        <PdfReportButton
+          title="Registros Reproductivos"
+          headers={["Ejercicio", "Id Vaca", "Parto", "Serv 1", "Serv 2", "Serv 3", "Concepción", "Parto 1", "IIP", "IPC", "S/C"]}
+          rows={registrosBasicos.map(v => {
+            const r = registrosReproductivos.find(rr => rr.id_vaca === v.id_vaca);
+            return [v.ejercicio, v.id_vaca, r?.parto||"", r?.servicio1||"", r?.servicio2||"", r?.servicio3||"", r?.concepcion1||"", r?.parto1||"", r?.iip||"", r?.ipc||"", r?.serv_conc||""];
+          })}
+        />
         <Button onClick={startNew}><Plus className="h-4 w-4 mr-2" /> Agregar Datos</Button>
       </div>
       <Dialog open={open} onOpenChange={setOpen}>

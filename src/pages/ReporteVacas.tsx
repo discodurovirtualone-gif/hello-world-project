@@ -4,6 +4,7 @@ import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpDown } from "lucide-react";
 import { useGanaderia, calcWood } from "@/context/GanaderiaContext";
+import PdfReportButton from "@/components/PdfReportButton";
 
 const DIAS = [30, 120, 210, 270];
 const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
@@ -170,6 +171,13 @@ const ReporteVacas = () => {
 
   return (
     <FormLayout title="Reporte Vacas">
+      <div className="flex justify-end mb-4">
+        <PdfReportButton
+          title="Reporte Vacas"
+          headers={["Id Vaca", "Kg Grasa", "Kg Prot", "Kg Sólidos", "LC305", "Prod. Corr.", "IIP", "IPC", "S/C"]}
+          rows={vacaData.map(v => [v.id_vaca, v.kgGrasa.toFixed(1), v.kgProt.toFixed(1), v.kgSolidos.toFixed(1), v.lc305.toFixed(0), v.prodCorregida.toFixed(0), v.iip || "—", v.ipc || "—", v.servConc || "—"])}
+        />
+      </div>
       <div className="space-y-6">
         {sections.map((section) => {
           const rows = sortAndSlice(vacaData, section.id, section.defaultSort);

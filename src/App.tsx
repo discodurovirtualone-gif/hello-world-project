@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { GanaderiaProvider } from "@/context/GanaderiaContext";
+import AccessibilityControls from "@/components/AccessibilityControls";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import RegistrosBasicos from "./pages/RegistrosBasicos.tsx";
@@ -26,6 +27,7 @@ const App = () => (
       <GanaderiaProvider>
         <Toaster />
         <Sonner />
+        <AccessibilityControls />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />

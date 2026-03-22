@@ -23,16 +23,26 @@ const ALL_SECTIONS = [
 
 const normalize = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
 
-// Convert Excel serial date number to YYYY-MM-DD string
+// Convert Excel serial date number to YYYY-MM-DD string, return null-safe
 const excelDateToString = (v: any): string => {
   if (!v) return "";
+  // Excel serial number
   if (typeof v === "number" && v > 10000 && v < 100000) {
     const date = new Date((v - 25569) * 86400 * 1000);
     if (!isNaN(date.getTime())) {
       return date.toISOString().split("T")[0];
     }
   }
-  return String(v);
+  const s = String(v).trim();
+  // Validate it looks like a date (YYYY-MM-DD or DD/MM/YYYY etc.)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // Try parsing other date formats
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime()) && /\d/.test(s) && s.length >= 8) {
+    return parsed.toISOString().split("T")[0];
+  }
+  // Not a valid date — return empty so it becomes null
+  return "";
 };
 
 const DATE_COLS = new Set([

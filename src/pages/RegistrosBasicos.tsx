@@ -7,8 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { useGanaderia, RegistroBasico, basicoToDb, calcEdadMeses } from "@/context/GanaderiaContext";
+import { useGanaderia, RegistroBasico, basicoToDb, calcEdadAnios } from "@/context/GanaderiaContext";
 import { supabase } from "@/integrations/supabase/client";
+import PdfReportButton from "@/components/PdfReportButton";
 
 const ejercicioOptions = Array.from({ length: 10 }, (_, i) => {
   const y = 2020 + i;
@@ -40,7 +41,7 @@ const RegistrosBasicos = () => {
       const next = { ...prev, [key]: value };
       // Auto-calculate edad in months when fecha_nacimiento changes
       if (key === "fecha_nacimiento" && value) {
-        next.edad = String(calcEdadMeses(value));
+        next.edad = String(calcEdadAnios(value));
       }
       return next;
     });
@@ -76,7 +77,12 @@ const RegistrosBasicos = () => {
 
   return (
     <FormLayout title="Registros Básicos">
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-between items-center mb-4">
+        <PdfReportButton
+          title="Registros Básicos"
+          headers={["Ejercicio", "Id Vaca", "Partos", "Fecha Nac.", "Raza", "Lactancia", "Edad (años)", "Potencial"]}
+          rows={registrosBasicos.map(r => [r.ejercicio, r.id_vaca, r.partos, r.fecha_nacimiento, r.raza, r.lactancia, r.edad, r.potencial_vaca])}
+        />
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button onClick={startNew}><Plus className="h-4 w-4 mr-2" /> Agregar Registro</Button>
@@ -93,10 +99,10 @@ const RegistrosBasicos = () => {
                 <FieldInput label="Fecha Nacimiento" value={form.fecha_nacimiento} onChange={update("fecha_nacimiento")} type="date" />
                 <FieldSelect label="Raza" value={form.raza} onChange={update("raza")} options={[{ value: "Jersey", label: "Jersey" }, { value: "Holando", label: "Holando" }, { value: "Otras", label: "Otras" }]} placeholder="Seleccionar raza" />
                 <FieldSelect label="Lactancia" value={form.lactancia} onChange={update("lactancia")} options={lactanciaOptions} placeholder="Seleccionar" />
-                <FieldInput label="Edad (meses)" value={form.edad} onChange={() => {}} type="number" />
+                <FieldInput label="Edad (años)" value={form.edad} onChange={() => {}} type="number" />
                 <FieldInput label="Potencial Vaca (lt)" value={form.potencial_vaca} onChange={update("potencial_vaca")} type="number" highlighted />
               </div>
-              <p className="text-xs text-muted-foreground">La edad se calcula automáticamente en meses a partir de la fecha de nacimiento.</p>
+              <p className="text-xs text-muted-foreground">La edad se calcula automáticamente en años a partir de la fecha de nacimiento.</p>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
                 <Button type="submit">{editIndex !== null ? "Actualizar" : "Guardar"}</Button>
@@ -116,7 +122,7 @@ const RegistrosBasicos = () => {
               <TableHead>Fecha Nac.</TableHead>
               <TableHead>Raza</TableHead>
               <TableHead>Lactancia</TableHead>
-              <TableHead>Edad (meses)</TableHead>
+              <TableHead>Edad (años)</TableHead>
               <TableHead>Potencial</TableHead>
               <TableHead className="w-24">Acciones</TableHead>
             </TableRow>
