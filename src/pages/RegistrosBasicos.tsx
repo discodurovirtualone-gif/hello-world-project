@@ -77,7 +77,12 @@ const RegistrosBasicos = () => {
 
   return (
     <FormLayout title="Registros Básicos">
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-between items-center mb-4">
+        <PdfReportButton
+          title="Registros Básicos"
+          headers={["Ejercicio", "Id Vaca", "Partos", "Fecha Nac.", "Raza", "Lactancia", "Edad (años)", "Potencial"]}
+          rows={registrosBasicos.map(r => [r.ejercicio, r.id_vaca, r.partos, r.fecha_nacimiento, r.raza, r.lactancia, r.edad, r.potencial_vaca])}
+        />
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button onClick={startNew}><Plus className="h-4 w-4 mr-2" /> Agregar Registro</Button>

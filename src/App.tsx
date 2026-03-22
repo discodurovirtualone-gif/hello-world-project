@@ -27,6 +27,7 @@ const App = () => (
       <GanaderiaProvider>
         <Toaster />
         <Sonner />
+        <AccessibilityControls />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
