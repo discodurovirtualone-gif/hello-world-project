@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { useGanaderia, RegistroBasico, basicoToDb, calcEdadMeses } from "@/context/GanaderiaContext";
+import { useGanaderia, RegistroBasico, basicoToDb, calcEdadAnios } from "@/context/GanaderiaContext";
 import { supabase } from "@/integrations/supabase/client";
 
 const ejercicioOptions = Array.from({ length: 10 }, (_, i) => {
