@@ -93,7 +93,7 @@ const RegistrosBasicos = () => {
                 <FieldInput label="Fecha Nacimiento" value={form.fecha_nacimiento} onChange={update("fecha_nacimiento")} type="date" />
                 <FieldSelect label="Raza" value={form.raza} onChange={update("raza")} options={[{ value: "Jersey", label: "Jersey" }, { value: "Holando", label: "Holando" }, { value: "Otras", label: "Otras" }]} placeholder="Seleccionar raza" />
                 <FieldSelect label="Lactancia" value={form.lactancia} onChange={update("lactancia")} options={lactanciaOptions} placeholder="Seleccionar" />
-                <FieldInput label="Edad (meses)" value={form.edad} onChange={() => {}} type="number" />
+                <FieldInput label="Edad (años)" value={form.edad} onChange={() => {}} type="number" />
                 <FieldInput label="Potencial Vaca (lt)" value={form.potencial_vaca} onChange={update("potencial_vaca")} type="number" highlighted />
               </div>
               <p className="text-xs text-muted-foreground">La edad se calcula automáticamente en meses a partir de la fecha de nacimiento.</p>
