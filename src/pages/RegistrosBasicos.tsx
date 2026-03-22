@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useGanaderia, RegistroBasico, basicoToDb, calcEdadAnios } from "@/context/GanaderiaContext";
 import { supabase } from "@/integrations/supabase/client";
+import PdfReportButton from "@/components/PdfReportButton";
 
 const ejercicioOptions = Array.from({ length: 10 }, (_, i) => {
   const y = 2020 + i;
