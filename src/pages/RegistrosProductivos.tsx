@@ -10,6 +10,7 @@ import { Pencil, Trash2, ArrowUpDown } from "lucide-react";
 import { useGanaderia, RegistroProductivo, calcWood, productivoToDb } from "@/context/GanaderiaContext";
 import { supabase } from "@/integrations/supabase/client";
 import PdfReportButton from "@/components/PdfReportButton";
+import DeleteAllButton from "@/components/DeleteAllButton";
 
 const DIAS = [30, 120, 210, 270];
 const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
@@ -49,13 +50,6 @@ const RegistrosProductivos = () => {
     return (potAsignados.reduce((s, v) => s + v, 0) / potAsignados.length).toFixed(0);
   };
 
-  const calcLactancias = (lc305: string, numLact: number): string[] => {
-    const lc = parseFloat(lc305);
-    if (isNaN(lc) || lc <= 0) return Array(5).fill("");
-    const factors = [0.85, 0.95, 1.0, 1.05, 1.02];
-    return factors.slice(0, 5).map((f, i) => i < numLact ? (lc * f).toFixed(0) : "");
-  };
-
   const emptyProd = (id_vaca: string, ejercicio: string): RegistroProductivo => ({
     ejercicio, id_vaca,
     reg_1_dia30: "", reg_2_dia120: "", reg_3_dia210: "", reg_4_dia270: "",
@@ -74,14 +68,7 @@ const RegistrosProductivos = () => {
     e.preventDefault();
     if (!form) return;
     const lc305 = calcWood305(form.id_vaca, form.reg_1_dia30, form.reg_2_dia120, form.reg_3_dia210, form.reg_4_dia270);
-    const vaca = registrosBasicos.find(v => v.id_vaca === form.id_vaca);
-    const numLact = vaca ? parseInt(vaca.lactancia) || 1 : 1;
-    const lacts = calcLactancias(lc305, numLact);
-    const updatedForm: RegistroProductivo = {
-      ...form, lc305_wood: lc305,
-      lact1: lacts[0] || "", lact2: lacts[1] || "", lact3: lacts[2] || "",
-      lact4: lacts[3] || "", lact5: lacts[4] || "",
-    };
+    const updatedForm: RegistroProductivo = { ...form, lc305_wood: lc305 };
     const existingIdx = registrosProductivos.findIndex(r => r.id_vaca === editVacaId);
     const dbRow = productivoToDb(updatedForm);
 
@@ -102,6 +89,12 @@ const RegistrosProductivos = () => {
   const handleDelete = async (id_vaca: string, ejercicio: string) => {
     await deleteRegistro('registros_productivos', id_vaca, ejercicio);
     toast.success("Registro eliminado");
+  };
+
+  const handleDeleteAll = async () => {
+    await supabase.from('registros_productivos').delete().neq('id_vaca', '');
+    setRegistrosProductivos([]);
+    toast.success("Todos los registros productivos eliminados");
   };
 
   const toggleSort = (key: SortKey) => {
@@ -129,11 +122,14 @@ const RegistrosProductivos = () => {
     <FormLayout title="Registros Productivos">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
         <Input placeholder="Filtrar por Id Vaca..." value={filterText} onChange={e => setFilterText(e.target.value)} className="max-w-xs" />
-        <PdfReportButton
-          title="Registros Productivos"
-          headers={["Ejercicio", "Id Vaca", "R1 D30", "R2 D120", "R3 D210", "R4 D270", "LC305", "% Grasa", "% Prot"]}
-          rows={sorted.map(({ vaca, prod }) => [vaca.ejercicio, vaca.id_vaca, prod?.reg_1_dia30||"", prod?.reg_2_dia120||"", prod?.reg_3_dia210||"", prod?.reg_4_dia270||"", prod?.lc305_wood||"", prod?.porcentaje_grasa||"", prod?.porcentaje_proteina||""])}
-        />
+        <div className="flex gap-2">
+          <PdfReportButton
+            title="Registros Productivos"
+            headers={["Ejercicio", "Id Vaca", "R1 D30", "R2 D120", "R3 D210", "R4 D270", "LC305", "% Grasa", "% Prot", "L1", "L2", "L3", "L4", "L5"]}
+            rows={sorted.map(({ vaca, prod }) => [vaca.ejercicio, vaca.id_vaca, prod?.reg_1_dia30||"", prod?.reg_2_dia120||"", prod?.reg_3_dia210||"", prod?.reg_4_dia270||"", prod?.lc305_wood||"", prod?.porcentaje_grasa||"", prod?.porcentaje_proteina||"", prod?.lact1||"", prod?.lact2||"", prod?.lact3||"", prod?.lact4||"", prod?.lact5||""])}
+          />
+          <DeleteAllButton onConfirm={handleDeleteAll} />
+        </div>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -159,7 +155,15 @@ const RegistrosProductivos = () => {
                 <FieldInput label="% Grasa" value={form.porcentaje_grasa} onChange={update("porcentaje_grasa")} type="number" highlighted />
                 <FieldInput label="% Proteína" value={form.porcentaje_proteina} onChange={update("porcentaje_proteina")} type="number" highlighted />
               </div>
-              <p className="text-xs text-muted-foreground">LC305 Wood y Lactancias se calculan automáticamente al guardar.</p>
+              <p className="text-sm font-semibold text-muted-foreground pt-2">Lactancias corregidas (litros)</p>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <FieldInput label="Lact 1" value={form.lact1} onChange={update("lact1")} type="number" highlighted />
+                <FieldInput label="Lact 2" value={form.lact2} onChange={update("lact2")} type="number" highlighted />
+                <FieldInput label="Lact 3" value={form.lact3} onChange={update("lact3")} type="number" highlighted />
+                <FieldInput label="Lact 4" value={form.lact4} onChange={update("lact4")} type="number" highlighted />
+                <FieldInput label="Lact 5" value={form.lact5} onChange={update("lact5")} type="number" highlighted />
+              </div>
+              <p className="text-xs text-muted-foreground">LC305 Wood se calcula automáticamente al guardar. Las lactancias se ingresan manualmente.</p>
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
                 <Button type="submit">Guardar</Button>
@@ -182,13 +186,18 @@ const RegistrosProductivos = () => {
               <SortHeader label="LC305" field="lc305_wood" />
               <SortHeader label="% Grasa" field="porcentaje_grasa" />
               <SortHeader label="% Prot" field="porcentaje_proteina" />
+              <TableHead>L1</TableHead>
+              <TableHead>L2</TableHead>
+              <TableHead>L3</TableHead>
+              <TableHead>L4</TableHead>
+              <TableHead>L5</TableHead>
               <TableHead className="w-24">Acc.</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sorted.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={15} className="text-center text-muted-foreground py-8">
                   No hay vacas registradas.
                 </TableCell>
               </TableRow>
@@ -203,6 +212,11 @@ const RegistrosProductivos = () => {
                 <TableCell className="font-bold">{prod?.lc305_wood || "—"}</TableCell>
                 <TableCell>{prod?.porcentaje_grasa || "—"}</TableCell>
                 <TableCell>{prod?.porcentaje_proteina || "—"}</TableCell>
+                <TableCell>{prod?.lact1 || "—"}</TableCell>
+                <TableCell>{prod?.lact2 || "—"}</TableCell>
+                <TableCell>{prod?.lact3 || "—"}</TableCell>
+                <TableCell>{prod?.lact4 || "—"}</TableCell>
+                <TableCell>{prod?.lact5 || "—"}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => startEdit(vaca.id_vaca, vaca.ejercicio)}>

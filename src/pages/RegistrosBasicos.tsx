@@ -10,6 +10,7 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useGanaderia, RegistroBasico, basicoToDb, calcEdadAnios } from "@/context/GanaderiaContext";
 import { supabase } from "@/integrations/supabase/client";
 import PdfReportButton from "@/components/PdfReportButton";
+import DeleteAllButton from "@/components/DeleteAllButton";
 
 const ejercicioOptions = Array.from({ length: 10 }, (_, i) => {
   const y = 2020 + i;
@@ -39,7 +40,6 @@ const RegistrosBasicos = () => {
   const update = (key: keyof RegistroBasico) => (value: string) => {
     setForm(prev => {
       const next = { ...prev, [key]: value };
-      // Auto-calculate edad in months when fecha_nacimiento changes
       if (key === "fecha_nacimiento" && value) {
         next.edad = String(calcEdadAnios(value));
       }
@@ -72,17 +72,26 @@ const RegistrosBasicos = () => {
     toast.success("Registro eliminado");
   };
 
+  const handleDeleteAll = async () => {
+    await supabase.from('registros_basicos').delete().neq('id_vaca', '');
+    setRegistrosBasicos([]);
+    toast.success("Todos los registros básicos eliminados");
+  };
+
   const startEdit = (i: number) => { setForm(registrosBasicos[i]); setEditIndex(i); setOpen(true); };
   const startNew = () => { setForm(emptyRegistro); setEditIndex(null); setOpen(true); };
 
   return (
     <FormLayout title="Registros Básicos">
-      <div className="flex justify-between items-center mb-4">
-        <PdfReportButton
-          title="Registros Básicos"
-          headers={["Ejercicio", "Id Vaca", "Partos", "Fecha Nac.", "Raza", "Lactancia", "Edad (años)", "Potencial"]}
-          rows={registrosBasicos.map(r => [r.ejercicio, r.id_vaca, r.partos, r.fecha_nacimiento, r.raza, r.lactancia, r.edad, r.potencial_vaca])}
-        />
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+        <div className="flex gap-2">
+          <PdfReportButton
+            title="Registros Básicos"
+            headers={["Ejercicio", "Id Vaca", "Partos", "Fecha Nac.", "Raza", "Lactancia", "Edad (años)", "Potencial"]}
+            rows={registrosBasicos.map(r => [r.ejercicio, r.id_vaca, r.partos, r.fecha_nacimiento, r.raza, r.lactancia, r.edad, r.potencial_vaca])}
+          />
+          <DeleteAllButton onConfirm={handleDeleteAll} />
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button onClick={startNew}><Plus className="h-4 w-4 mr-2" /> Agregar Registro</Button>

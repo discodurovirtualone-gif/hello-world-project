@@ -9,6 +9,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { useGanaderia, RegistroOtro, otroToDb } from "@/context/GanaderiaContext";
 import { supabase } from "@/integrations/supabase/client";
 import PdfReportButton from "@/components/PdfReportButton";
+import DeleteAllButton from "@/components/DeleteAllButton";
 
 const scoreOptions = Array.from({ length: 5 }, (_, i) => ({
   value: String(i + 1), label: String(i + 1),
@@ -61,17 +62,26 @@ const RegistrosOtros = () => {
     toast.success("Registro eliminado");
   };
 
+  const handleDeleteAll = async () => {
+    await supabase.from('registros_otros').delete().neq('id_vaca', '');
+    setRegistrosOtros([]);
+    toast.success("Todos los otros registros eliminados");
+  };
+
   return (
     <FormLayout title="Registros Otros">
-      <div className="flex justify-end mb-4">
-        <PdfReportButton
-          title="Registros Otros"
-          headers={["Ejercicio", "Id Vaca", "Renguera", "Mastitis", "Fac. Parto", "Longevidad", "Fort. Patas"]}
-          rows={registrosBasicos.map(v => {
-            const o = registrosOtros.find(r => r.id_vaca === v.id_vaca);
-            return [v.ejercicio, v.id_vaca, o?.renguera||"", o?.mastitis||"", o?.facParto||"", o?.longevidad||"", o?.fortalezaPatas||""];
-          })}
-        />
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+        <div className="flex gap-2">
+          <PdfReportButton
+            title="Registros Otros"
+            headers={["Ejercicio", "Id Vaca", "Renguera", "Mastitis", "Fac. Parto", "Longevidad", "Fort. Patas"]}
+            rows={registrosBasicos.map(v => {
+              const o = registrosOtros.find(r => r.id_vaca === v.id_vaca);
+              return [v.ejercicio, v.id_vaca, o?.renguera||"", o?.mastitis||"", o?.facParto||"", o?.longevidad||"", o?.fortalezaPatas||""];
+            })}
+          />
+          <DeleteAllButton onConfirm={handleDeleteAll} />
+        </div>
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">

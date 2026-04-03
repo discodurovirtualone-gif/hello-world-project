@@ -2,6 +2,7 @@ import FormLayout from "@/components/FormLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useGanaderia, calcWood } from "@/context/GanaderiaContext";
+import PdfReportButton from "@/components/PdfReportButton";
 
 const DIAS = [30, 120, 210, 270] as const;
 const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
@@ -9,13 +10,13 @@ const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
 const ProduccionWood = () => {
   const { registrosBasicos, registrosProductivos, factores } = useGanaderia();
 
-  const findFactor = (raza: string, edad: number, lactancia: number): number | null => {
+  const findFactor = (raza: string, edad: number, lactancia: number): { value: number; found: boolean } => {
     const razaMap: Record<string, string> = { "1": "Holstein", "2": "Jersey" };
     const razaNombre = razaMap[raza] || raza;
     const match = factores.find(
       (f) => f.raza === razaNombre && f.edad === edad && f.lactancia === lactancia
     );
-    return match ? match.factor : null;
+    return match ? { value: match.factor, found: true } : { value: 1, found: false };
   };
 
   const findClosestPotencial = (prodReal: number, dia: number): number => {
@@ -28,7 +29,6 @@ const ProduccionWood = () => {
     return closest;
   };
 
-  // Build rows from all vacas in RegistrosBasicos
   const rows = registrosBasicos.map((vaca) => {
     const prod = registrosProductivos.find((p) => p.id_vaca === vaca.id_vaca);
     const reales = prod
@@ -37,23 +37,21 @@ const ProduccionWood = () => {
 
     const hasReales = prod && reales.some((v) => v > 0);
 
-    // Potencial assignments
     const potAsignados = hasReales
       ? DIAS.map((dia, i) => findClosestPotencial(reales[i], dia))
-      : DIAS.map((dia) => {
+      : DIAS.map(() => {
           const pot = parseFloat(vaca.potencial_vaca) || 0;
           return pot > 0 ? pot : 0;
         });
     const potPromedio = potAsignados.reduce((s, v) => s + v, 0) / potAsignados.length;
 
-    // Wood production from potencial_vaca
     const potencialVaca = parseFloat(vaca.potencial_vaca) || 0;
     const prodWood = DIAS.map((d) => calcWood(potencialVaca, d));
 
     const edad = parseInt(vaca.edad) || 0;
     const lactancia = parseInt(vaca.lactancia) || 0;
-    const factor = findFactor(vaca.raza, edad, lactancia);
-    const corregida = factor !== null && potPromedio > 0 ? potPromedio * factor : null;
+    const factorResult = findFactor(vaca.raza, edad, lactancia);
+    const corregida = potPromedio > 0 ? potPromedio * factorResult.value : null;
 
     return {
       id_vaca: vaca.id_vaca,
@@ -63,13 +61,21 @@ const ProduccionWood = () => {
       potAsignados,
       potPromedio,
       prodWood,
-      factor,
+      factor: factorResult.value,
+      factorFound: factorResult.found,
       corregida,
     };
   });
 
   return (
     <FormLayout title="Cálculo Producción Wood 305" variant="result">
+      <div className="flex justify-end mb-4">
+        <PdfReportButton
+          title="Producción Wood 305"
+          headers={["Id Vaca", "Potencial", "Prom. Pot.", "Factor", "Wood305"]}
+          rows={rows.map(r => [r.id_vaca, r.potencialVaca > 0 ? r.potencialVaca.toString() : "—", r.potPromedio > 0 ? r.potPromedio.toFixed(0) : "—", r.factor.toFixed(3), r.corregida !== null ? r.corregida.toFixed(2) : "—"])}
+        />
+      </div>
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base">Fórmula de Wood</CardTitle>
@@ -120,8 +126,9 @@ const ProduccionWood = () => {
                   </TableCell>
                 ))}
                 <TableCell className="font-bold">{r.potPromedio > 0 ? r.potPromedio.toFixed(0) : "—"}</TableCell>
-                <TableCell>
-                  {r.factor !== null ? r.factor.toFixed(3) : <span className="text-muted-foreground text-xs">Sin factor</span>}
+                <TableCell className={r.factorFound ? "" : "text-destructive font-bold"}>
+                  {r.factor.toFixed(3)}
+                  {!r.factorFound && <span className="text-xs ml-1">(def)</span>}
                 </TableCell>
                 <TableCell className="font-bold">
                   {r.corregida !== null ? r.corregida.toFixed(2) : "—"}

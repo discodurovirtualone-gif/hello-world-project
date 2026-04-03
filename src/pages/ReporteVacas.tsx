@@ -14,7 +14,6 @@ const calcKg = (lc305: number, pct: number) => lc305 > 0 && pct > 0 ? lc305 * (p
 
 const ReporteVacas = () => {
   const { registrosBasicos, registrosProductivos, registrosReproductivos, factores } = useGanaderia();
-
   const [sortStates, setSortStates] = useState<Record<string, { key: string; asc: boolean }>>({});
 
   const toggleSort = (section: string, key: string) => {
@@ -25,8 +24,7 @@ const ReporteVacas = () => {
     });
   };
 
-  // Compute wood305 for a single productivo record
-  const computeWood305 = (prod: typeof registrosProductivos[0], vaca: typeof registrosBasicos[0]) => {
+  const computeWood305 = (prod: typeof registrosProductivos[0]) => {
     const reales = [
       parseFloat(prod.reg_1_dia30) || 0, parseFloat(prod.reg_2_dia120) || 0,
       parseFloat(prod.reg_3_dia210) || 0, parseFloat(prod.reg_4_dia270) || 0,
@@ -40,26 +38,14 @@ const ReporteVacas = () => {
     return pots.reduce((s, v) => s + v, 0) / pots.length;
   };
 
-  // Compute enriched vaca data with corrected lactancias
   const vacaData = useMemo(() => {
-    // Group all productivos by id_vaca (one per ejercicio = one lactancia)
-    const prodByVaca = new Map<string, typeof registrosProductivos>();
-    for (const prod of registrosProductivos) {
-      const list = prodByVaca.get(prod.id_vaca) || [];
-      list.push(prod);
-      prodByVaca.set(prod.id_vaca, list);
-    }
-
     return registrosBasicos.map((vaca) => {
-      const allProds = prodByVaca.get(vaca.id_vaca) || [];
-      const prod = allProds.find((p) => p.ejercicio === vaca.ejercicio) || allProds[0];
+      const prod = registrosProductivos.find(p => p.id_vaca === vaca.id_vaca);
       const repro = registrosReproductivos.find((r) => r.id_vaca === vaca.id_vaca);
 
-      // Calculate wood305 for current record
       let lc305 = 0;
-      if (prod) lc305 = computeWood305(prod, vaca);
+      if (prod) lc305 = computeWood305(prod);
 
-      // Find correction factor, default to 1
       const edad = parseInt(vaca.edad) || 0;
       const lactancia = parseInt(vaca.lactancia) || 0;
       const razaNombre = vaca.raza || "Otras";
@@ -67,11 +53,12 @@ const ReporteVacas = () => {
       const factorValue = factor ? factor.factor : 1;
       const prodCorregida = lc305 > 0 ? lc305 * factorValue : 0;
 
-      // Lactancias: each productivo record per ejercicio = one lactancia, corrected by factor
-      const lactancias = allProds.slice(0, 5).map((p) => {
-        const w305 = computeWood305(p, vaca);
-        return w305 > 0 ? (w305 * factorValue).toFixed(0) : "";
-      });
+      // Use lact1-lact5 from productivo records directly
+      const l1 = prod ? prod.lact1 : "";
+      const l2 = prod ? prod.lact2 : "";
+      const l3 = prod ? prod.lact3 : "";
+      const l4 = prod ? prod.lact4 : "";
+      const l5 = prod ? prod.lact5 : "";
 
       const pctGrasa = prod ? parseFloat(prod.porcentaje_grasa) || 0 : 0;
       const pctProt = prod ? parseFloat(prod.porcentaje_proteina) || 0 : 0;
@@ -86,8 +73,8 @@ const ReporteVacas = () => {
       return {
         id_vaca: vaca.id_vaca,
         kgGrasa, kgProt, kgSolidos, lc305, prodCorregida,
-        l1: lactancias[0] || "", l2: lactancias[1] || "", l3: lactancias[2] || "",
-        l4: lactancias[3] || "", l5: lactancias[4] || "",
+        l1: l1 || "", l2: l2 || "", l3: l3 || "",
+        l4: l4 || "", l5: l5 || "",
         iip, ipc, servConc,
       };
     });
@@ -126,10 +113,10 @@ const ReporteVacas = () => {
       ],
     },
     {
-      id: "leche", title: "2. Reporte Vacas Leche (Valor de Cría)", defaultSort: "prodCorregida",
+      id: "leche", title: "2. Reporte Vacas Leche (Prod. Corregida)", defaultSort: "prodCorregida",
       cols: [
         { label: "Id Vaca", field: "id_vaca" },
-        { label: "Valor Cría", field: "prodCorregida" },
+        { label: "Prod. Corregida", field: "prodCorregida" },
       ],
     },
     {
@@ -174,8 +161,8 @@ const ReporteVacas = () => {
       <div className="flex justify-end mb-4">
         <PdfReportButton
           title="Reporte Vacas"
-          headers={["Id Vaca", "Kg Grasa", "Kg Prot", "Kg Sólidos", "LC305", "Prod. Corr.", "IIP", "IPC", "S/C"]}
-          rows={vacaData.map(v => [v.id_vaca, v.kgGrasa.toFixed(1), v.kgProt.toFixed(1), v.kgSolidos.toFixed(1), v.lc305.toFixed(0), v.prodCorregida.toFixed(0), v.iip || "—", v.ipc || "—", v.servConc || "—"])}
+          headers={["Id Vaca", "Kg Grasa", "Kg Prot", "Kg Sólidos", "LC305", "Prod. Corr.", "L1", "L2", "L3", "L4", "L5", "IIP", "IPC", "S/C"]}
+          rows={vacaData.map(v => [v.id_vaca, v.kgGrasa.toFixed(1), v.kgProt.toFixed(1), v.kgSolidos.toFixed(1), v.lc305.toFixed(0), v.prodCorregida.toFixed(0), v.l1||"—", v.l2||"—", v.l3||"—", v.l4||"—", v.l5||"—", v.iip || "—", v.ipc || "—", v.servConc || "—"])}
         />
       </div>
       <div className="space-y-6">
