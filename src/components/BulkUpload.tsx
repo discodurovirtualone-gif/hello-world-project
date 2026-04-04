@@ -10,7 +10,7 @@ import {
 } from "@/context/GanaderiaContext";
 
 const BASICOS_COLS = ["ejercicio", "id_vaca", "partos", "fecha_nacimiento", "raza", "lactancia", "edad", "potencial_vaca"];
-const PRODUCTIVOS_COLS = ["ejercicio", "id_vaca", "reg_1_dia30", "reg_2_dia120", "reg_3_dia210", "reg_4_dia270", "porcentaje_grasa", "porcentaje_proteina", "lact1", "lact2", "lact3", "lact4", "lact5"];
+const PRODUCTIVOS_COLS = ["ejercicio", "id_vaca", "reg_1_dia30", "reg_2_dia120", "reg_3_dia210", "reg_4_dia270", "porcentaje_grasa", "porcentaje_proteina", "lc305_wood", "lact1", "lact2", "lact3", "lact4", "lact5"];
 const REPRODUCTIVOS_COLS = ["ejercicio", "id_vaca", "parto", "raza", "servicio1", "servicio2", "servicio3", "concepcion1", "toroUsado", "aborto1", "aborto2", "parto1"];
 const OTROS_COLS = ["ejercicio", "id_vaca", "renguera", "mastitis", "facParto", "longevidad", "fortalezaPatas"];
 
