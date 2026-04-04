@@ -175,7 +175,7 @@ const ValorCria = () => {
       <div className="flex justify-end mb-4">
         <PdfReportButton
           title="Valor de Cría"
-          headers={["Id Vaca", "Prod. Corr.", "Prom. Rodeo", "Dif. Promedio", "n", "H2m", "Valor Cría", "VC Hijas"]}
+          headers={["Id Vaca", "Wood305", "Prom. Rodeo", "Dif. Promedio", "n", "H2m", "Valor Cría", "VC Hijas"]}
           rows={sorted.map(r => [r.id_vaca, r.prodCorregida.toFixed(1), r.promedioRodeo.toFixed(1), r.diffPromedio.toFixed(1), String(r.numLact), r.h2m.toFixed(4), r.valorCria.toFixed(1), r.valorCriaHijas.toFixed(1)])}
         />
       </div>
