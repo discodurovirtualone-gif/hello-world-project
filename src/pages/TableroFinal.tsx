@@ -3,10 +3,11 @@ import FormLayout from "@/components/FormLayout";
 import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { useGanaderia, calcWood } from "@/context/GanaderiaContext";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import PdfReportButton from "@/components/PdfReportButton";
+import ThresholdFilters, { defaultThresholds, ThresholdValues } from "@/components/tablero/ThresholdFilters";
+import FilteredCowsTable, { VacaIndicadores } from "@/components/tablero/FilteredCowsTable";
 
 const DIAS = [30, 120, 210, 270];
 const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
@@ -45,17 +46,19 @@ const TableroFinal = () => {
   }, [registrosBasicos]);
 
   const [selectedEjercicio, setSelectedEjercicio] = useState<string>("all");
+  const [thresholds, setThresholds] = useState<ThresholdValues>(defaultThresholds);
 
   const filteredBasicos = useMemo(() =>
     selectedEjercicio === "all" ? registrosBasicos : registrosBasicos.filter((v) => v.ejercicio === selectedEjercicio),
     [registrosBasicos, selectedEjercicio]
   );
 
-  // Compute per-vaca data
-  const vacaData = useMemo(() => {
+  // Compute per-vaca data with all indicators
+  const vacaData: VacaIndicadores[] = useMemo(() => {
     return filteredBasicos.map((vaca) => {
       const prod = registrosProductivos.find((p) => p.id_vaca === vaca.id_vaca);
       const repro = registrosReproductivos.find((r) => r.id_vaca === vaca.id_vaca);
+      const otro = registrosOtros.find((o) => o.id_vaca === vaca.id_vaca);
 
       let lc305 = 0;
       if (prod) {
@@ -71,64 +74,62 @@ const TableroFinal = () => {
         }
       }
 
-      const pctGrasa = prod ? parseFloat(prod.porcentaje_grasa) || 0 : 0;
-      const pctProt = prod ? parseFloat(prod.porcentaje_proteina) || 0 : 0;
-      const kgGrasa = lc305 > 0 && pctGrasa > 0 ? calcKg(lc305, pctGrasa) : 0;
-      const kgProt = lc305 > 0 && pctProt > 0 ? calcKg(lc305, pctProt) : 0;
-      const kgSolidos = kgGrasa + kgProt;
       const ipc = repro ? parseFloat(repro.ipc) || 0 : 0;
       const iip = repro ? parseFloat(repro.iip) || 0 : 0;
+      const serv_conc = repro ? parseFloat(repro.serv_conc) || 0 : 0;
       const edad = parseInt(vaca.edad) || 0;
       const partos = parseInt(vaca.partos) || 0;
-      const fechaNac = vaca.fecha_nacimiento;
-      // EPP: edad al primer parto (approx from fecha_nacimiento if partos>=1)
-      const epp = partos >= 1 && fechaNac ? edad * 12 : 0; // simplified: edad in years * 12
+      const eep = partos >= 1 ? edad * 12 : 0;
 
-      return { id_vaca: vaca.id_vaca, lc305, kgGrasa, kgProt, kgSolidos, ipc, iip, epp, edad, partos, ejercicio: vaca.ejercicio };
+      const renguera = otro ? parseFloat(otro.renguera) || 0 : 0;
+      const mastitis = otro ? parseFloat(otro.mastitis) || 0 : 0;
+      const fac_parto = otro ? parseFloat(otro.facParto) || 0 : 0;
+      const longevidad = otro ? parseFloat(otro.longevidad) || 0 : 0;
+      const fortaleza_patas = otro ? parseFloat(otro.fortalezaPatas) || 0 : 0;
+
+      return {
+        id_vaca: vaca.id_vaca, ejercicio: vaca.ejercicio, partos, edad, raza: vaca.raza,
+        lc305, ipc, iip, serv_conc, eep,
+        renguera, mastitis, fac_parto, longevidad, fortaleza_patas,
+      };
     });
-  }, [filteredBasicos, registrosProductivos, registrosReproductivos]);
+  }, [filteredBasicos, registrosProductivos, registrosReproductivos, registrosOtros]);
 
   // Histogram data
   const histograms = useMemo(() => {
-    const vals = (key: keyof typeof vacaData[0]) => vacaData.map((v) => v[key] as number).filter((v) => v > 0);
+    const vals = (key: keyof VacaIndicadores) => vacaData.map((v) => v[key] as number).filter((v) => v > 0);
     return [
       { title: "Leche 305 Wood", data: buildHistogram(vals("lc305")) },
-      { title: "Kg Grasa", data: buildHistogram(vals("kgGrasa")) },
-      { title: "Kg Proteína", data: buildHistogram(vals("kgProt")) },
-      { title: "Kg Sólidos Totales", data: buildHistogram(vals("kgSolidos")) },
+      { title: "Kg Grasa", data: buildHistogram(vacaData.map((v) => { const prod = registrosProductivos.find(p => p.id_vaca === v.id_vaca); return v.lc305 > 0 && prod ? calcKg(v.lc305, parseFloat(prod.porcentaje_grasa) || 0) : 0; }).filter(v => v > 0)) },
+      { title: "Kg Proteína", data: buildHistogram(vacaData.map((v) => { const prod = registrosProductivos.find(p => p.id_vaca === v.id_vaca); return v.lc305 > 0 && prod ? calcKg(v.lc305, parseFloat(prod.porcentaje_proteina) || 0) : 0; }).filter(v => v > 0)) },
+      { title: "Kg Sólidos Totales", data: buildHistogram(vacaData.map((v) => { const prod = registrosProductivos.find(p => p.id_vaca === v.id_vaca); if (!prod || v.lc305 <= 0) return 0; return calcKg(v.lc305, parseFloat(prod.porcentaje_grasa) || 0) + calcKg(v.lc305, parseFloat(prod.porcentaje_proteina) || 0); }).filter(v => v > 0)) },
       { title: "IPS (días)", data: buildHistogram(vals("iip")) },
       { title: "IPC (días)", data: buildHistogram(vals("ipc")) },
-      { title: "EPP (meses)", data: buildHistogram(vals("epp")) },
+      { title: "EPP (meses)", data: buildHistogram(vals("eep")) },
     ];
-  }, [vacaData]);
+  }, [vacaData, registrosProductivos]);
 
   // Summary by primíparas/multíparas
   const summary = useMemo(() => {
-    const primiparas = filteredBasicos.filter((v) => (parseInt(v.partos) || 0) <= 1);
-    const multiparas = filteredBasicos.filter((v) => (parseInt(v.partos) || 0) > 1);
+    const primiparas = vacaData.filter((v) => v.partos <= 1);
+    const multiparas = vacaData.filter((v) => v.partos > 1);
 
-    const calcAvg = (ids: string[], key: string) => {
-      const vals = ids.map((id) => {
-        const repro = registrosReproductivos.find((r) => r.id_vaca === id);
-        const otro = registrosOtros.find((r) => r.id_vaca === id);
-        const vaca = registrosBasicos.find((v) => v.id_vaca === id);
+    const calcAvg = (group: VacaIndicadores[], key: string) => {
+      const vals = group.map((v) => {
         switch (key) {
-          case "ipc": return repro ? parseFloat(repro.ipc) || 0 : 0;
-          case "ips": return repro ? parseFloat(repro.iip) || 0 : 0;
-          case "serv_conc": return repro ? parseFloat(repro.serv_conc) || 0 : 0;
-          case "mastitis": return otro ? parseFloat(otro.mastitis) || 0 : 0;
-          case "renguera": return otro ? parseFloat(otro.renguera) || 0 : 0;
-          case "fac_parto": return otro ? parseFloat(otro.facParto) || 0 : 0;
-          case "iip": return repro ? parseFloat(repro.iip) || 0 : 0;
-          case "eep": return vaca ? (parseInt(vaca.edad) || 0) * 12 : 0;
+          case "ipc": return v.ipc;
+          case "ips": return v.iip;
+          case "serv_conc": return v.serv_conc;
+          case "mastitis": return v.mastitis;
+          case "renguera": return v.renguera;
+          case "fac_parto": return v.fac_parto;
+          case "iip": return v.iip;
+          case "eep": return v.eep;
           default: return 0;
         }
       }).filter((v) => v > 0);
       return vals.length > 0 ? (vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1) : "—";
     };
-
-    const primiIds = primiparas.map((v) => v.id_vaca);
-    const multiIds = multiparas.map((v) => v.id_vaca);
 
     const indicators = [
       { label: "IPC (días)", key: "ipc" },
@@ -137,16 +138,16 @@ const TableroFinal = () => {
       { label: "Ind. Mastitis", key: "mastitis" },
       { label: "Ind. Renguera", key: "renguera" },
       { label: "Ind. Fac. Parto", key: "fac_parto" },
-      { label: "IIP", key: "iip" },
+      { label: "IIP (días)", key: "iip" },
       { label: "EEP (meses)", key: "eep" },
     ];
 
     return indicators.map((ind) => ({
       label: ind.label,
-      primiparas: calcAvg(primiIds, ind.key),
-      multiparas: calcAvg(multiIds, ind.key),
+      primiparas: calcAvg(primiparas, ind.key),
+      multiparas: calcAvg(multiparas, ind.key),
     }));
-  }, [filteredBasicos, registrosReproductivos, registrosOtros, registrosBasicos]);
+  }, [vacaData]);
 
   // Pie chart: age distribution
   const ageDistribution = useMemo(() => {
@@ -229,8 +230,8 @@ const TableroFinal = () => {
               <TableHeader>
                 <TableRow className="bg-primary/10">
                   <TableHead className="font-semibold text-foreground">Indicador</TableHead>
-                  <TableHead className="font-semibold text-foreground">Primíparas</TableHead>
-                  <TableHead className="font-semibold text-foreground">Multíparas</TableHead>
+                  <TableHead className="font-semibold text-foreground">Primíparas (≤1 parto)</TableHead>
+                  <TableHead className="font-semibold text-foreground">Multíparas (&gt;1 parto)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -269,6 +270,12 @@ const TableroFinal = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Umbrales editables */}
+        <ThresholdFilters thresholds={thresholds} onChange={setThresholds} />
+
+        {/* Tabla de vacas filtradas por umbrales */}
+        <FilteredCowsTable vacas={vacaData} thresholds={thresholds} />
       </div>
     </FormLayout>
   );
