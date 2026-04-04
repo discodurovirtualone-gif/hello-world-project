@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Sun, Moon, Type, ZoomIn, ZoomOut, Bold } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const FONT_SIZES = [14, 16, 18, 20, 24];
+const FONT_SIZES = [10, 12, 14, 16, 18, 20, 24];
 const BG_MODES = [
   { label: "Normal", className: "" },
   { label: "Alto contraste", className: "a11y-high-contrast" },
@@ -10,7 +10,7 @@ const BG_MODES = [
 ];
 
 const AccessibilityControls = () => {
-  const [sizeIdx, setSizeIdx] = useState(1);
+  const [sizeIdx, setSizeIdx] = useState(3);
   const [bgIdx, setBgIdx] = useState(0);
   const [bold, setBold] = useState(false);
   const [open, setOpen] = useState(false);
