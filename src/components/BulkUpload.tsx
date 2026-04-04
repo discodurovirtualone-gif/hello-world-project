@@ -131,7 +131,13 @@ const BulkUpload = () => {
             if (error) { errors.push(`Básicos DB: ${error.message}`); console.error(error); }
           } else if (sec.name === "Productivos") {
             const appRows: RegistroProductivo[] = rows.map(r => ({
-              ...r, lc305_wood: "", lact1: "", lact2: "", lact3: "", lact4: "", lact5: "",
+              ...r,
+              lc305_wood: r.lc305_wood || "",
+              lact1: r.lact1 || "",
+              lact2: r.lact2 || "",
+              lact3: r.lact3 || "",
+              lact4: r.lact4 || "",
+              lact5: r.lact5 || "",
             } as RegistroProductivo));
             setRegistrosProductivos(prev => [...prev, ...appRows]);
             const dbRows = appRows.map(productivoToDb);
