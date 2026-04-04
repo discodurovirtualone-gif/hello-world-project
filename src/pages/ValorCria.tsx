@@ -79,9 +79,10 @@ const ValorCria = () => {
     return vals;
   };
 
-  // Get number of lactancias from registros basicos
-  const getNumLact = (vaca: typeof registrosBasicos[0]): number => {
-    return parseInt(vaca.lactancia) || 1;
+  // Get number of lactancias = registered lactancias + 1 (current one)
+  const getNumLact = (id_vaca: string): number => {
+    const lacts = getLactancias(id_vaca);
+    return lacts.length + 1;
   };
 
   // Build per-lactancia averages across all vacas
