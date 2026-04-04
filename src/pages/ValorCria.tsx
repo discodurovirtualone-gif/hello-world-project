@@ -89,7 +89,7 @@ const ValorCria = () => {
   // Group vacas by their lactancia number, compute rodeo average per lactancia
   const allVacasData = registrosBasicos.map(vaca => {
     const wood305 = getWood305(vaca);
-    const lactNum = getNumLact(vaca);
+    const lactNum = getNumLact(vaca.id_vaca);
     const lactVals = getLactancias(vaca.id_vaca);
     return { id_vaca: vaca.id_vaca, wood305, lactNum, lactVals };
   });
