@@ -8,6 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import PdfReportButton from "@/components/PdfReportButton";
 import ThresholdFilters, { defaultThresholds, ThresholdValues } from "@/components/tablero/ThresholdFilters";
 import FilteredCowsTable, { VacaIndicadores } from "@/components/tablero/FilteredCowsTable";
+import TorosSummaryCard from "@/components/tablero/TorosSummaryCard";
 
 const DIAS = [30, 120, 210, 270];
 const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
@@ -36,8 +37,34 @@ const buildHistogram = (values: number[], binCount = 8) => {
   return bins;
 };
 
+// Calcular días entre dos fechas (strings)
+const diffDias = (fechaA: string, fechaB: string): number => {
+  if (!fechaA || !fechaB) return 0;
+  const a = new Date(fechaA);
+  const b = new Date(fechaB);
+  if (isNaN(a.getTime()) || isNaN(b.getTime())) return 0;
+  return Math.round(Math.abs(a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
+};
+
+// Determinar si vaca es primípara según reglas:
+// Primípara: lactancia === 1 en básicos Y no tiene lactancias registradas en productivos
+// Multípara: lactancia >= 2 en básicos Y tiene al menos una lactancia en productivos
+const esVacaPrimipara = (
+  vaca: { lactancia: string },
+  prod: { lact1: string; lact2: string; lact3: string; lact4: string; lact5: string } | undefined
+): boolean => {
+  const lact = parseInt(vaca.lactancia) || 0;
+  if (lact >= 2 && prod) {
+    const tieneLact = [prod.lact1, prod.lact2, prod.lact3, prod.lact4, prod.lact5]
+      .some(v => v !== "" && v != null && parseFloat(v) > 0);
+    if (tieneLact) return false; // multípara
+  }
+  // Si lactancia === 1 o no tiene lactancias en productivos → primípara
+  return true;
+};
+
 const TableroFinal = () => {
-  const { registrosBasicos, registrosProductivos, registrosReproductivos, registrosOtros } = useGanaderia();
+  const { registrosBasicos, registrosProductivos, registrosReproductivos, registrosOtros, toros } = useGanaderia();
 
   const ejercicios = useMemo(() => {
     const set = new Set<string>();
@@ -53,7 +80,6 @@ const TableroFinal = () => {
     [registrosBasicos, selectedEjercicio]
   );
 
-  // Compute per-vaca data with all indicators
   const vacaData: VacaIndicadores[] = useMemo(() => {
     return filteredBasicos.map((vaca) => {
       const prod = registrosProductivos.find((p) => p.id_vaca === vaca.id_vaca);
@@ -79,7 +105,20 @@ const TableroFinal = () => {
       const serv_conc = repro ? parseFloat(repro.serv_conc) || 0 : 0;
       const edad = parseInt(vaca.edad) || 0;
       const partos = parseInt(vaca.partos) || 0;
-      const eep = partos >= 1 ? edad * 12 : 0;
+      const lactancia = parseInt(vaca.lactancia) || 0;
+
+      // IPS = días entre parto y primer servicio
+      const ips = repro ? diffDias(repro.parto, repro.servicio1) : 0;
+
+      // EPP = fecha_primer_parto - fecha_nacimiento (en días)
+      const epp = repro && repro.parto && vaca.fecha_nacimiento
+        ? diffDias(vaca.fecha_nacimiento, repro.parto)
+        : 0;
+
+      // EPS = fecha_primer_servicio - fecha_nacimiento (en días)
+      const eps = repro && repro.servicio1 && vaca.fecha_nacimiento
+        ? diffDias(vaca.fecha_nacimiento, repro.servicio1)
+        : 0;
 
       const renguera = otro ? parseFloat(otro.renguera) || 0 : 0;
       const mastitis = otro ? parseFloat(otro.mastitis) || 0 : 0;
@@ -87,15 +126,18 @@ const TableroFinal = () => {
       const longevidad = otro ? parseFloat(otro.longevidad) || 0 : 0;
       const fortaleza_patas = otro ? parseFloat(otro.fortalezaPatas) || 0 : 0;
 
+      const esPrimipara = esVacaPrimipara(vaca, prod);
+
       return {
         id_vaca: vaca.id_vaca, ejercicio: vaca.ejercicio, partos, edad, raza: vaca.raza,
-        lc305, ipc, iip, serv_conc, eep,
+        lactancia, lc305, ipc, ips, iip, serv_conc, epp, eps,
         renguera, mastitis, fac_parto, longevidad, fortaleza_patas,
+        esPrimipara,
       };
     });
   }, [filteredBasicos, registrosProductivos, registrosReproductivos, registrosOtros]);
 
-  // Histogram data
+  // Histograms
   const histograms = useMemo(() => {
     const vals = (key: keyof VacaIndicadores) => vacaData.map((v) => v[key] as number).filter((v) => v > 0);
     return [
@@ -103,28 +145,30 @@ const TableroFinal = () => {
       { title: "Kg Grasa", data: buildHistogram(vacaData.map((v) => { const prod = registrosProductivos.find(p => p.id_vaca === v.id_vaca); return v.lc305 > 0 && prod ? calcKg(v.lc305, parseFloat(prod.porcentaje_grasa) || 0) : 0; }).filter(v => v > 0)) },
       { title: "Kg Proteína", data: buildHistogram(vacaData.map((v) => { const prod = registrosProductivos.find(p => p.id_vaca === v.id_vaca); return v.lc305 > 0 && prod ? calcKg(v.lc305, parseFloat(prod.porcentaje_proteina) || 0) : 0; }).filter(v => v > 0)) },
       { title: "Kg Sólidos Totales", data: buildHistogram(vacaData.map((v) => { const prod = registrosProductivos.find(p => p.id_vaca === v.id_vaca); if (!prod || v.lc305 <= 0) return 0; return calcKg(v.lc305, parseFloat(prod.porcentaje_grasa) || 0) + calcKg(v.lc305, parseFloat(prod.porcentaje_proteina) || 0); }).filter(v => v > 0)) },
-      { title: "IPS (días)", data: buildHistogram(vals("iip")) },
+      { title: "IPS (días)", data: buildHistogram(vals("ips")) },
       { title: "IPC (días)", data: buildHistogram(vals("ipc")) },
-      { title: "EPP (meses)", data: buildHistogram(vals("eep")) },
+      { title: "EPP (días)", data: buildHistogram(vals("epp")) },
+      { title: "EPS (días)", data: buildHistogram(vals("eps")) },
     ];
   }, [vacaData, registrosProductivos]);
 
-  // Summary by primíparas/multíparas
+  // Summary primíparas / multíparas
   const summary = useMemo(() => {
-    const primiparas = vacaData.filter((v) => v.partos <= 1);
-    const multiparas = vacaData.filter((v) => v.partos > 1);
+    const primiparas = vacaData.filter((v) => v.esPrimipara);
+    const multiparas = vacaData.filter((v) => !v.esPrimipara);
 
     const calcAvg = (group: VacaIndicadores[], key: string) => {
       const vals = group.map((v) => {
         switch (key) {
           case "ipc": return v.ipc;
-          case "ips": return v.iip;
+          case "ips": return v.ips;
           case "serv_conc": return v.serv_conc;
           case "mastitis": return v.mastitis;
           case "renguera": return v.renguera;
           case "fac_parto": return v.fac_parto;
           case "iip": return v.iip;
-          case "eep": return v.eep;
+          case "epp": return v.epp;
+          case "eps": return v.eps;
           default: return 0;
         }
       }).filter((v) => v > 0);
@@ -139,7 +183,8 @@ const TableroFinal = () => {
       { label: "Ind. Renguera", key: "renguera" },
       { label: "Ind. Fac. Parto", key: "fac_parto" },
       { label: "IIP (días)", key: "iip" },
-      { label: "EEP (meses)", key: "eep" },
+      { label: "EPP (días)", key: "epp" },
+      { label: "EPS (días)", key: "eps" },
     ];
 
     return indicators.map((ind) => ({
@@ -205,7 +250,7 @@ const TableroFinal = () => {
                         <BarChart data={h.data}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="range" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={50} />
-                          <YAxis allowDecimals={false} />
+                          <YAxis allowDecimals={false} label={{ value: "n", angle: -90, position: "insideLeft", style: { fontSize: 12 } }} />
                           <Tooltip />
                           <Bar dataKey="count" fill="hsl(142, 50%, 40%)" radius={[4, 4, 0, 0]} />
                         </BarChart>
@@ -220,32 +265,36 @@ const TableroFinal = () => {
           </CardContent>
         </Card>
 
-        {/* Cuadro resumen primíparas / multíparas */}
-        <Card className="border-2 border-primary/20">
-          <CardHeader className="bg-accent/50 pb-2">
-            <CardTitle className="text-lg font-bold">Indicadores: Primíparas vs Multíparas</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-primary/10">
-                  <TableHead className="font-semibold text-foreground">Indicador</TableHead>
-                  <TableHead className="font-semibold text-foreground">Primíparas (≤1 parto)</TableHead>
-                  <TableHead className="font-semibold text-foreground">Multíparas (&gt;1 parto)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {summary.map((row) => (
-                  <TableRow key={row.label}>
-                    <TableCell className="font-medium">{row.label}</TableCell>
-                    <TableCell>{row.primiparas}</TableCell>
-                    <TableCell>{row.multiparas}</TableCell>
+        {/* Cuadro resumen primíparas / multíparas + Cuadro toros */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="border-2 border-primary/20">
+            <CardHeader className="bg-accent/50 pb-2">
+              <CardTitle className="text-lg font-bold">Indicadores: Primíparas vs Multíparas</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-primary/10">
+                    <TableHead className="font-semibold text-foreground">Indicador</TableHead>
+                    <TableHead className="font-semibold text-foreground">Primíparas</TableHead>
+                    <TableHead className="font-semibold text-foreground">Multíparas</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {summary.map((row) => (
+                    <TableRow key={row.label}>
+                      <TableCell className="font-medium">{row.label}</TableCell>
+                      <TableCell>{row.primiparas}</TableCell>
+                      <TableCell>{row.multiparas}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <TorosSummaryCard />
+        </div>
 
         {/* Gráfico de torta - edad */}
         <Card className="border-2 border-primary/20">
