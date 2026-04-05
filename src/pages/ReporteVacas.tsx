@@ -70,6 +70,16 @@ const ReporteVacas = () => {
       const ipc = repro ? parseFloat(repro.ipc) || 0 : 0;
       const servConc = repro ? parseFloat(repro.serv_conc) || 0 : 0;
 
+      // IPS = días entre parto y primer servicio
+      let ips = 0;
+      if (repro && repro.parto && repro.servicio1) {
+        const fp = new Date(repro.parto);
+        const fs = new Date(repro.servicio1);
+        if (!isNaN(fp.getTime()) && !isNaN(fs.getTime())) {
+          ips = Math.round(Math.abs(fs.getTime() - fp.getTime()) / (1000 * 60 * 60 * 24));
+        }
+      }
+
       return {
         id_vaca: vaca.id_vaca,
         kgGrasa, kgProt, kgSolidos, lc305, prodCorregida,
