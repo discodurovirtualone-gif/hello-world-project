@@ -12,7 +12,7 @@ export interface ThresholdValues {
   ips: string;
   ipc: string;
   serv_conc: string;
-  eep: string;
+  epp: string;
 }
 
 export const defaultThresholds: ThresholdValues = {
@@ -25,7 +25,7 @@ export const defaultThresholds: ThresholdValues = {
   ips: "",
   ipc: "",
   serv_conc: "",
-  eep: "",
+  epp: "",
 };
 
 interface ThresholdFiltersProps {
@@ -43,7 +43,7 @@ const THRESHOLD_FIELDS: { key: keyof ThresholdValues; label: string; placeholder
   { key: "ips", label: "IPS (máx. días)", placeholder: "Ej: 90" },
   { key: "ipc", label: "IPC (máx. días)", placeholder: "Ej: 150" },
   { key: "serv_conc", label: "Serv/Conc (máx.)", placeholder: "Ej: 2" },
-  { key: "eep", label: "EEP (máx. meses)", placeholder: "Ej: 30" },
+  { key: "epp", label: "EPP (máx. días)", placeholder: "Ej: 900" },
 ];
 
 const ThresholdFilters = ({ thresholds, onChange }: ThresholdFiltersProps) => {

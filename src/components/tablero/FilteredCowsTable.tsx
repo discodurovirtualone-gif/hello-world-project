@@ -8,16 +8,20 @@ export interface VacaIndicadores {
   partos: number;
   edad: number;
   raza: string;
+  lactancia: number;
   lc305: number;
   ipc: number;
+  ips: number;
   iip: number;
   serv_conc: number;
-  eep: number;
+  epp: number;
+  eps: number;
   renguera: number;
   mastitis: number;
   fac_parto: number;
   longevidad: number;
   fortaleza_patas: number;
+  esPrimipara: boolean;
 }
 
 interface FilteredCowsTableProps {
@@ -36,10 +40,10 @@ const FilteredCowsTable = ({ vacas, thresholds }: FilteredCowsTableProps) => {
     if (t.fac_parto && v.fac_parto > 0 && v.fac_parto > parseFloat(t.fac_parto)) return false;
     if (t.longevidad && v.longevidad > 0 && v.longevidad < parseFloat(t.longevidad)) return false;
     if (t.fortaleza_patas && v.fortaleza_patas > 0 && v.fortaleza_patas < parseFloat(t.fortaleza_patas)) return false;
-    if (t.ips && v.iip > 0 && v.iip > parseFloat(t.ips)) return false;
+    if (t.ips && v.ips > 0 && v.ips > parseFloat(t.ips)) return false;
     if (t.ipc && v.ipc > 0 && v.ipc > parseFloat(t.ipc)) return false;
     if (t.serv_conc && v.serv_conc > 0 && v.serv_conc > parseFloat(t.serv_conc)) return false;
-    if (t.eep && v.eep > 0 && v.eep > parseFloat(t.eep)) return false;
+    if (t.epp && v.epp > 0 && v.epp > parseFloat(t.epp)) return false;
     return true;
   });
 
@@ -67,13 +71,15 @@ const FilteredCowsTable = ({ vacas, thresholds }: FilteredCowsTableProps) => {
                   <TableHead className="font-semibold text-foreground">ID Vaca</TableHead>
                   <TableHead className="font-semibold text-foreground">Ejercicio</TableHead>
                   <TableHead className="font-semibold text-foreground">Raza</TableHead>
+                  <TableHead className="font-semibold text-foreground">Tipo</TableHead>
                   <TableHead className="font-semibold text-foreground">Partos</TableHead>
                   <TableHead className="font-semibold text-foreground">Edad</TableHead>
                   <TableHead className="font-semibold text-foreground">LC305</TableHead>
                   <TableHead className="font-semibold text-foreground">IPC</TableHead>
                   <TableHead className="font-semibold text-foreground">IPS</TableHead>
                   <TableHead className="font-semibold text-foreground">S/C</TableHead>
-                  <TableHead className="font-semibold text-foreground">EEP</TableHead>
+                  <TableHead className="font-semibold text-foreground">EPP (días)</TableHead>
+                  <TableHead className="font-semibold text-foreground">EPS (días)</TableHead>
                   <TableHead className="font-semibold text-foreground">Mastitis</TableHead>
                   <TableHead className="font-semibold text-foreground">Renguera</TableHead>
                   <TableHead className="font-semibold text-foreground">Fac.Parto</TableHead>
@@ -87,13 +93,15 @@ const FilteredCowsTable = ({ vacas, thresholds }: FilteredCowsTableProps) => {
                     <TableCell className="font-medium">{v.id_vaca}</TableCell>
                     <TableCell>{v.ejercicio}</TableCell>
                     <TableCell>{v.raza}</TableCell>
+                    <TableCell>{v.esPrimipara ? "Primípara" : "Multípara"}</TableCell>
                     <TableCell>{v.partos}</TableCell>
                     <TableCell>{v.edad}</TableCell>
                     <TableCell>{v.lc305 > 0 ? v.lc305.toFixed(0) : "—"}</TableCell>
                     <TableCell>{v.ipc > 0 ? v.ipc.toFixed(0) : "—"}</TableCell>
-                    <TableCell>{v.iip > 0 ? v.iip.toFixed(0) : "—"}</TableCell>
+                    <TableCell>{v.ips > 0 ? v.ips.toFixed(0) : "—"}</TableCell>
                     <TableCell>{v.serv_conc > 0 ? v.serv_conc.toFixed(1) : "—"}</TableCell>
-                    <TableCell>{v.eep > 0 ? v.eep.toFixed(0) : "—"}</TableCell>
+                    <TableCell>{v.epp > 0 ? v.epp.toFixed(0) : "—"}</TableCell>
+                    <TableCell>{v.eps > 0 ? v.eps.toFixed(0) : "—"}</TableCell>
                     <TableCell>{v.mastitis > 0 ? v.mastitis : "—"}</TableCell>
                     <TableCell>{v.renguera > 0 ? v.renguera : "—"}</TableCell>
                     <TableCell>{v.fac_parto > 0 ? v.fac_parto : "—"}</TableCell>
