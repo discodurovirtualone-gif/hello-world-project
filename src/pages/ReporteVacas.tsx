@@ -85,7 +85,7 @@ const ReporteVacas = () => {
         kgGrasa, kgProt, kgSolidos, lc305, prodCorregida,
         l1: l1 || "", l2: l2 || "", l3: l3 || "",
         l4: l4 || "", l5: l5 || "",
-        iip, ipc, servConc,
+        iip, ipc, servConc, ips,
       };
     });
   }, [registrosBasicos, registrosProductivos, registrosReproductivos, factores]);
