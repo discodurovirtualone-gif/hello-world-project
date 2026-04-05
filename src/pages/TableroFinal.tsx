@@ -9,6 +9,7 @@ import PdfReportButton from "@/components/PdfReportButton";
 import ThresholdFilters, { defaultThresholds, ThresholdValues } from "@/components/tablero/ThresholdFilters";
 import FilteredCowsTable, { VacaIndicadores } from "@/components/tablero/FilteredCowsTable";
 import TorosSummaryCard from "@/components/tablero/TorosSummaryCard";
+import BestAnimalsTable from "@/components/tablero/BestAnimalsTable";
 
 const DIAS = [30, 120, 210, 270];
 const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
@@ -145,10 +146,10 @@ const TableroFinal = () => {
       { title: "Kg Grasa", data: buildHistogram(vacaData.map((v) => { const prod = registrosProductivos.find(p => p.id_vaca === v.id_vaca); return v.lc305 > 0 && prod ? calcKg(v.lc305, parseFloat(prod.porcentaje_grasa) || 0) : 0; }).filter(v => v > 0)) },
       { title: "Kg Proteína", data: buildHistogram(vacaData.map((v) => { const prod = registrosProductivos.find(p => p.id_vaca === v.id_vaca); return v.lc305 > 0 && prod ? calcKg(v.lc305, parseFloat(prod.porcentaje_proteina) || 0) : 0; }).filter(v => v > 0)) },
       { title: "Kg Sólidos Totales", data: buildHistogram(vacaData.map((v) => { const prod = registrosProductivos.find(p => p.id_vaca === v.id_vaca); if (!prod || v.lc305 <= 0) return 0; return calcKg(v.lc305, parseFloat(prod.porcentaje_grasa) || 0) + calcKg(v.lc305, parseFloat(prod.porcentaje_proteina) || 0); }).filter(v => v > 0)) },
-      { title: "IPS (días)", data: buildHistogram(vals("ips")) },
-      { title: "IPC (días)", data: buildHistogram(vals("ipc")) },
-      { title: "EPP (días)", data: buildHistogram(vals("epp")) },
-      { title: "EPS (días)", data: buildHistogram(vals("eps")) },
+      { title: "IPS", data: buildHistogram(vals("ips")) },
+      { title: "IPC", data: buildHistogram(vals("ipc")) },
+      { title: "EPP", data: buildHistogram(vals("epp")) },
+      { title: "EPS", data: buildHistogram(vals("eps")) },
     ];
   }, [vacaData, registrosProductivos]);
 
@@ -321,10 +322,13 @@ const TableroFinal = () => {
         </Card>
 
         {/* Umbrales editables */}
-        <ThresholdFilters thresholds={thresholds} onChange={setThresholds} />
+        <ThresholdFilters thresholds={thresholds} onChange={setThresholds} vacas={vacaData} />
 
         {/* Tabla de vacas filtradas por umbrales */}
         <FilteredCowsTable vacas={vacaData} thresholds={thresholds} />
+
+        {/* Selección mejores vacas y toros */}
+        <BestAnimalsTable />
       </div>
     </FormLayout>
   );
