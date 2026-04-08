@@ -79,7 +79,7 @@ const ThresholdFilters = ({ thresholds, onChange, vacas }: ThresholdFiltersProps
                   value={thresholds[f.key]}
                   onChange={(e) => handleChange(f.key, e.target.value)}
                   placeholder={f.placeholder}
-                  className="h-8 text-sm"
+                  className="h-8 text-sm bg-field-highlight border-accent"
                 />
                 <span className="text-[10px] text-muted-foreground">
                   Mín: {range.min} | Máx: {range.max}
