@@ -89,7 +89,7 @@ const TorosSummaryCard = () => {
                 value={thresholds[f.key as keyof ToroThresholdValues]}
                 onChange={(e) => handleChange(f.key as keyof ToroThresholdValues, e.target.value)}
                 placeholder={f.placeholder}
-                className="h-8 text-sm"
+                className="h-8 text-sm bg-field-highlight border-accent"
               />
               <span className="text-[10px] text-muted-foreground">
                 Mín: {ranges[f.key]?.min} | Máx: {ranges[f.key]?.max}

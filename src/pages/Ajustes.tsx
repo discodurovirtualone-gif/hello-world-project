@@ -1,0 +1,216 @@
+import { useState } from "react";
+import FormLayout from "@/components/FormLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { Plus, Pencil, Trash2 } from "lucide-react";
+import { useAjustes } from "@/context/AjustesContext";
+import { useGanaderia, FactorCorreccion } from "@/context/GanaderiaContext";
+import FieldInput from "@/components/FieldInput";
+import FieldSelect from "@/components/FieldSelect";
+
+const razaOptions = [
+  { value: "Holstein", label: "Holstein" },
+  { value: "Jersey", label: "Jersey" },
+];
+const nivelOptions = [
+  { value: "Alto", label: "Alto" },
+  { value: "Medio", label: "Medio" },
+  { value: "Bajo", label: "Bajo" },
+];
+const emptyFactor: FactorCorreccion = { raza: "", nivel_produccion: "", edad: 0, lactancia: 0, factor: 0 };
+
+const EDITABLE_INPUT = "h-8 text-sm bg-field-highlight border-accent";
+const NON_EDITABLE_INPUT = "h-8 text-sm bg-white";
+
+const Ajustes = () => {
+  const { ajustes, setHeredabilidad, setRepetibilidad, setRangoPotenciales, potencialesAuto } = useAjustes();
+  const { factores, setFactores } = useGanaderia();
+
+  const [customRange, setCustomRange] = useState(ajustes.rangoPotenciales.join(", "));
+  const [factorForm, setFactorForm] = useState<FactorCorreccion>(emptyFactor);
+  const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [open, setOpen] = useState(false);
+
+  const handleRangeApply = () => {
+    const vals = customRange.split(",").map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
+    if (vals.length < 2) { toast.error("Ingrese al menos 2 valores separados por comas"); return; }
+    setRangoPotenciales(vals.sort((a, b) => a - b));
+    toast.success("Rango de potenciales actualizado");
+  };
+
+  const handleResetRange = () => {
+    setRangoPotenciales([]);
+    setCustomRange(potencialesAuto.join(", "));
+    toast.success("Rango restablecido al valor automático");
+  };
+
+  const handleFactorSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!factorForm.raza || factorForm.edad <= 0) { toast.error("Complete los campos obligatorios"); return; }
+    if (editIndex !== null) {
+      setFactores(prev => prev.map((f, i) => (i === editIndex ? factorForm : f)));
+      toast.success("Factor actualizado");
+    } else {
+      setFactores(prev => [...prev, factorForm]);
+      toast.success("Factor agregado");
+    }
+    setFactorForm(emptyFactor);
+    setEditIndex(null);
+    setOpen(false);
+  };
+
+  const handleDeleteFactor = (i: number) => {
+    setFactores(prev => prev.filter((_, idx) => idx !== i));
+    toast.success("Factor eliminado");
+  };
+
+  return (
+    <FormLayout title="Ajustes">
+      <div className="space-y-6">
+        {/* Rango de Potenciales */}
+        <Card className="border-2 border-primary/20">
+          <CardHeader className="bg-accent/50 pb-2">
+            <CardTitle className="text-lg font-bold">Rango de Potenciales (Wood 305)</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Rango automático basado en el potencial promedio del rodeo. Puede modificarlo manualmente.
+            </p>
+            <div className="flex items-end gap-3">
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs font-medium">Potenciales (separados por coma)</Label>
+                <Input
+                  value={customRange}
+                  onChange={(e) => setCustomRange(e.target.value)}
+                  placeholder="Ej: 4000, 5000, 6000, 7000, 8000"
+                  className={EDITABLE_INPUT}
+                />
+              </div>
+              <Button onClick={handleRangeApply} size="sm">Aplicar</Button>
+              <Button onClick={handleResetRange} variant="outline" size="sm">Auto</Button>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {ajustes.rangoPotenciales.map((p) => (
+                <span key={p} className="px-3 py-1 rounded-full bg-primary/10 text-sm font-medium">{p.toLocaleString()} lt</span>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Heredabilidad y Repetibilidad */}
+        <Card className="border-2 border-primary/20">
+          <CardHeader className="bg-accent/50 pb-2">
+            <CardTitle className="text-lg font-bold">Heredabilidad y Repetibilidad (Leche)</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="grid grid-cols-2 gap-4 max-w-md">
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Heredabilidad (h²)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={ajustes.heredabilidad}
+                  onChange={(e) => setHeredabilidad(e.target.value)}
+                  className={EDITABLE_INPUT}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Repetibilidad (R)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={ajustes.repetibilidad}
+                  onChange={(e) => setRepetibilidad(e.target.value)}
+                  className={EDITABLE_INPUT}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Estos valores se aplican automáticamente en Valor de Cría y Tablero Final.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Factores de Corrección */}
+        <Card className="border-2 border-primary/20">
+          <CardHeader className="bg-accent/50 pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-bold">Factores de Corrección</CardTitle>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" onClick={() => { setFactorForm(emptyFactor); setEditIndex(null); setOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-1" /> Agregar
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{editIndex !== null ? "Editar Factor" : "Nuevo Factor"}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleFactorSubmit} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <FieldSelect label="Raza" value={factorForm.raza} onChange={(v) => setFactorForm(p => ({ ...p, raza: v }))} options={razaOptions} placeholder="Seleccionar" highlighted />
+                    <FieldSelect label="Nivel Producción" value={factorForm.nivel_produccion} onChange={(v) => setFactorForm(p => ({ ...p, nivel_produccion: v }))} options={nivelOptions} placeholder="Seleccionar" highlighted />
+                    <FieldInput label="Edad" value={String(factorForm.edad)} onChange={(v) => setFactorForm(p => ({ ...p, edad: parseInt(v) || 0 }))} type="number" highlighted />
+                    <FieldInput label="Lactancia" value={String(factorForm.lactancia)} onChange={(v) => setFactorForm(p => ({ ...p, lactancia: parseInt(v) || 0 }))} type="number" highlighted />
+                    <FieldInput label="Factor" value={String(factorForm.factor)} onChange={(v) => setFactorForm(p => ({ ...p, factor: parseFloat(v) || 0 }))} type="number" highlighted />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+                    <Button type="submit">{editIndex !== null ? "Actualizar" : "Guardar"}</Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-auto max-h-[400px]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-primary/10">
+                    <TableHead className="font-semibold text-foreground">Raza</TableHead>
+                    <TableHead className="font-semibold text-foreground">Nivel</TableHead>
+                    <TableHead className="font-semibold text-foreground">Edad</TableHead>
+                    <TableHead className="font-semibold text-foreground">Lactancia</TableHead>
+                    <TableHead className="font-semibold text-foreground">Factor</TableHead>
+                    <TableHead className="w-20">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {factores.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-4">Sin factores</TableCell>
+                    </TableRow>
+                  ) : factores.map((f, i) => (
+                    <TableRow key={`${f.raza}-${f.edad}-${f.lactancia}-${i}`}>
+                      <TableCell>{f.raza}</TableCell>
+                      <TableCell>{f.nivel_produccion}</TableCell>
+                      <TableCell>{f.edad}</TableCell>
+                      <TableCell>{f.lactancia}</TableCell>
+                      <TableCell className="font-medium">{f.factor}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setFactorForm(f); setEditIndex(i); setOpen(true); }}>
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteFactor(i)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </FormLayout>
+  );
+};
+
+export default Ajustes;

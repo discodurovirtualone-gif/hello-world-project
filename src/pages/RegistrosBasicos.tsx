@@ -17,10 +17,6 @@ const ejercicioOptions = Array.from({ length: 10 }, (_, i) => {
   return { value: `${y % 100}/${(y + 1) % 100}`, label: `${y % 100}/${(y + 1) % 100}` };
 });
 
-const partosOptions = [
-  { value: "Primípara", label: "Primípara" },
-  { value: "Multípara", label: "Multípara" },
-];
 
 const lactanciaOptions = Array.from({ length: 6 }, (_, i) => ({
   value: String(i + 1), label: String(i + 1),
@@ -87,8 +83,8 @@ const RegistrosBasicos = () => {
         <div className="flex gap-2">
           <PdfReportButton
             title="Registros Básicos"
-            headers={["Ejercicio", "Id Vaca", "Partos", "Fecha Nac.", "Raza", "Lactancia", "Edad (años)", "Potencial"]}
-            rows={registrosBasicos.map(r => [r.ejercicio, r.id_vaca, r.partos, r.fecha_nacimiento, r.raza, r.lactancia, r.edad, r.potencial_vaca])}
+            headers={["Ejercicio", "Id Vaca", "Fecha Nac.", "Raza", "Lactancia", "Edad (años)", "Potencial"]}
+            rows={registrosBasicos.map(r => [r.ejercicio, r.id_vaca, r.fecha_nacimiento, r.raza, r.lactancia, r.edad, r.potencial_vaca])}
           />
           <DeleteAllButton onConfirm={handleDeleteAll} />
         </div>
@@ -102,12 +98,11 @@ const RegistrosBasicos = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <FieldSelect label="Ejercicio" value={form.ejercicio} onChange={update("ejercicio")} options={ejercicioOptions} placeholder="Seleccionar" />
-                <FieldInput label="Id Vaca" value={form.id_vaca} onChange={update("id_vaca")} type="number" />
-                <FieldSelect label="Partos" value={form.partos} onChange={update("partos")} options={partosOptions} placeholder="Seleccionar" />
-                <FieldInput label="Fecha Nacimiento" value={form.fecha_nacimiento} onChange={update("fecha_nacimiento")} type="date" />
-                <FieldSelect label="Raza" value={form.raza} onChange={update("raza")} options={[{ value: "Jersey", label: "Jersey" }, { value: "Holando", label: "Holando" }, { value: "Otras", label: "Otras" }]} placeholder="Seleccionar raza" />
-                <FieldSelect label="Lactancia" value={form.lactancia} onChange={update("lactancia")} options={lactanciaOptions} placeholder="Seleccionar" />
+                <FieldSelect label="Ejercicio" value={form.ejercicio} onChange={update("ejercicio")} options={ejercicioOptions} placeholder="Seleccionar" highlighted />
+                <FieldInput label="Id Vaca" value={form.id_vaca} onChange={update("id_vaca")} type="number" highlighted />
+                <FieldInput label="Fecha Nacimiento" value={form.fecha_nacimiento} onChange={update("fecha_nacimiento")} type="date" highlighted />
+                <FieldSelect label="Raza" value={form.raza} onChange={update("raza")} options={[{ value: "Jersey", label: "Jersey" }, { value: "Holando", label: "Holando" }, { value: "Otras", label: "Otras" }]} placeholder="Seleccionar raza" highlighted />
+                <FieldSelect label="Lactancia" value={form.lactancia} onChange={update("lactancia")} options={lactanciaOptions} placeholder="Seleccionar" highlighted />
                 <FieldInput label="Edad (años)" value={form.edad} onChange={() => {}} type="number" />
                 <FieldInput label="Potencial Vaca (lt)" value={form.potencial_vaca} onChange={update("potencial_vaca")} type="number" highlighted />
               </div>
@@ -127,7 +122,6 @@ const RegistrosBasicos = () => {
             <TableRow className="bg-muted/50">
               <TableHead>Ejercicio</TableHead>
               <TableHead>Id Vaca</TableHead>
-              <TableHead>Partos</TableHead>
               <TableHead>Fecha Nac.</TableHead>
               <TableHead>Raza</TableHead>
               <TableHead>Lactancia</TableHead>
@@ -139,7 +133,7 @@ const RegistrosBasicos = () => {
           <TableBody>
             {registrosBasicos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   No hay registros. Haga clic en "Agregar Registro" para comenzar.
                 </TableCell>
               </TableRow>
@@ -147,7 +141,6 @@ const RegistrosBasicos = () => {
               <TableRow key={`${r.id_vaca}-${r.ejercicio}-${i}`}>
                 <TableCell>{r.ejercicio}</TableCell>
                 <TableCell className="font-medium">{r.id_vaca}</TableCell>
-                <TableCell>{r.partos}</TableCell>
                 <TableCell>{r.fecha_nacimiento}</TableCell>
                 <TableCell>{r.raza}</TableCell>
                 <TableCell>{r.lactancia}</TableCell>

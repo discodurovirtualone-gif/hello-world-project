@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Milk, ClipboardList, NotebookPen, FileBarChart, BarChart3, LayoutDashboard, BookOpen, Calculator, SlidersHorizontal, Heart, Dna } from "lucide-react";
+import { Milk, ClipboardList, NotebookPen, FileBarChart, BarChart3, LayoutDashboard, BookOpen, Calculator, SlidersHorizontal, Heart, Dna, Settings } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import BulkUpload from "@/components/BulkUpload";
 import PdfDownload from "@/components/PdfDownload";
@@ -76,6 +76,12 @@ const reporteItems = [
     description: "Dashboard general del sistema",
     icon: LayoutDashboard,
     path: "/tablero-final",
+  },
+  {
+    title: "Ajustes",
+    description: "Potenciales, heredabilidad y factores",
+    icon: Settings,
+    path: "/ajustes",
   },
 ];
 
@@ -157,7 +163,7 @@ const Index = () => {
       </div>
 
       {/* Reportes */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-4xl w-full">
         {reporteItems.map((item) => (
           <Link
             key={item.path}

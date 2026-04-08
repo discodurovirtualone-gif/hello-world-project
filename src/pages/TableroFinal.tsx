@@ -266,36 +266,32 @@ const TableroFinal = () => {
           </CardContent>
         </Card>
 
-        {/* Cuadro resumen primíparas / multíparas + Cuadro toros */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="border-2 border-primary/20">
-            <CardHeader className="bg-accent/50 pb-2">
-              <CardTitle className="text-lg font-bold">Indicadores: Primíparas vs Multíparas</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-primary/10">
-                    <TableHead className="font-semibold text-foreground">Indicador</TableHead>
-                    <TableHead className="font-semibold text-foreground">Primíparas</TableHead>
-                    <TableHead className="font-semibold text-foreground">Multíparas</TableHead>
+        {/* Cuadro resumen primíparas / multíparas */}
+        <Card className="border-2 border-primary/20">
+          <CardHeader className="bg-accent/50 pb-2">
+            <CardTitle className="text-lg font-bold">Indicadores: Primíparas vs Multíparas</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-primary/10">
+                  <TableHead className="font-semibold text-foreground">Indicador</TableHead>
+                  <TableHead className="font-semibold text-foreground">Primíparas</TableHead>
+                  <TableHead className="font-semibold text-foreground">Multíparas</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {summary.map((row) => (
+                  <TableRow key={row.label}>
+                    <TableCell className="font-medium">{row.label}</TableCell>
+                    <TableCell>{row.primiparas}</TableCell>
+                    <TableCell>{row.multiparas}</TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {summary.map((row) => (
-                    <TableRow key={row.label}>
-                      <TableCell className="font-medium">{row.label}</TableCell>
-                      <TableCell>{row.primiparas}</TableCell>
-                      <TableCell>{row.multiparas}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          <TorosSummaryCard />
-        </div>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
         {/* Gráfico de torta - edad */}
         <Card className="border-2 border-primary/20">
@@ -321,11 +317,14 @@ const TableroFinal = () => {
           </CardContent>
         </Card>
 
-        {/* Umbrales editables */}
+        {/* Umbrales de Selección Vacas */}
         <ThresholdFilters thresholds={thresholds} onChange={setThresholds} vacas={vacaData} />
 
         {/* Tabla de vacas filtradas por umbrales */}
         <FilteredCowsTable vacas={vacaData} thresholds={thresholds} />
+
+        {/* Umbrales de Selección de Toros */}
+        <TorosSummaryCard />
 
         {/* Selección mejores vacas y toros */}
         <BestAnimalsTable />
