@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import FormLayout from "@/components/FormLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,7 +6,6 @@ import { useGanaderia, calcWood } from "@/context/GanaderiaContext";
 import PdfReportButton from "@/components/PdfReportButton";
 
 const DIAS = [30, 120, 210, 270] as const;
-const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
 
 const ProduccionWood = () => {
   const { registrosBasicos, registrosProductivos, factores } = useGanaderia();
