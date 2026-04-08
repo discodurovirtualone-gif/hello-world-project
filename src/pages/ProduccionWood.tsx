@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import FormLayout from "@/components/FormLayout";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,11 +6,20 @@ import { useGanaderia, calcWood } from "@/context/GanaderiaContext";
 import PdfReportButton from "@/components/PdfReportButton";
 
 const DIAS = [30, 120, 210, 270] as const;
-const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
 
 const ProduccionWood = () => {
   const { registrosBasicos, registrosProductivos, factores } = useGanaderia();
 
+  const POTENCIALES = useMemo(() => {
+    const maxPot = Math.max(
+      ...registrosBasicos.map(r => parseFloat(r.potencial_vaca) || 0),
+      7000
+    );
+    const top = Math.ceil(maxPot / 1000) * 1000;
+    const range: number[] = [];
+    for (let v = 2000; v <= top; v += 1000) range.push(v);
+    return range;
+  }, [registrosBasicos]);
   const findFactor = (raza: string, edad: number, lactancia: number): { value: number; found: boolean } => {
     const razaMap: Record<string, string> = { "1": "Holstein", "2": "Jersey" };
     const razaNombre = razaMap[raza] || raza;
