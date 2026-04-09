@@ -116,7 +116,7 @@ const TableroFinal = () => {
       const longevidad = otro ? parseFloat(otro.longevidad) || 0 : 0;
       const fortaleza_patas = otro ? parseFloat(otro.fortalezaPatas) || 0 : 0;
 
-      const esPrimipara = esVacaPrimipara(vaca, prod);
+      const esPrimipara = esVacaPrimipara(vaca);
 
       return {
         id_vaca: vaca.id_vaca, ejercicio: vaca.ejercicio, partos, edad, raza: vaca.raza,
