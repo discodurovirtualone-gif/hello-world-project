@@ -47,21 +47,10 @@ const diffDias = (fechaA: string, fechaB: string): number => {
   return Math.round(Math.abs(a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
 };
 
-// Determinar si vaca es primípara según reglas:
-// Primípara: lactancia === 1 en básicos Y no tiene lactancias registradas en productivos
-// Multípara: lactancia >= 2 en básicos Y tiene al menos una lactancia en productivos
-const esVacaPrimipara = (
-  vaca: { lactancia: string },
-  prod: { lact1: string; lact2: string; lact3: string; lact4: string; lact5: string } | undefined
-): boolean => {
+// Primípara: lactancia === 1, Multípara: lactancia >= 2
+const esVacaPrimipara = (vaca: { lactancia: string }): boolean => {
   const lact = parseInt(vaca.lactancia) || 0;
-  if (lact >= 2 && prod) {
-    const tieneLact = [prod.lact1, prod.lact2, prod.lact3, prod.lact4, prod.lact5]
-      .some(v => v !== "" && v != null && parseFloat(v) > 0);
-    if (tieneLact) return false; // multípara
-  }
-  // Si lactancia === 1 o no tiene lactancias en productivos → primípara
-  return true;
+  return lact <= 1;
 };
 
 const TableroFinal = () => {
