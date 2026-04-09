@@ -47,10 +47,33 @@ const diffDias = (fechaA: string, fechaB: string): number => {
   return Math.round(Math.abs(a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
 };
 
-// Primípara: lactancia === 1, Multípara: lactancia >= 2
+// Primípara: lactancia <= 1, Multípara: lactancia >= 2
 const esVacaPrimipara = (vaca: { lactancia: string }): boolean => {
   const lact = parseInt(vaca.lactancia) || 0;
   return lact <= 1;
+};
+
+const calcServConcepcion = (repro?: {
+  serv_conc: string;
+  servicio1: string;
+  servicio2: string;
+  servicio3: string;
+  concepcion1: string;
+}) => {
+  if (!repro) return 0;
+
+  const stored = parseFloat(repro.serv_conc) || 0;
+  if (stored > 0) return stored;
+
+  const servicios = [repro.servicio1, repro.servicio2, repro.servicio3].filter(
+    (fecha) => !!fecha,
+  );
+
+  if (servicios.length === 0) return 0;
+  if (!repro.concepcion1) return servicios.length;
+
+  const idx = servicios.findIndex((fecha) => fecha === repro.concepcion1);
+  return idx >= 0 ? idx + 1 : servicios.length;
 };
 
 const TableroFinal = () => {
@@ -65,16 +88,28 @@ const TableroFinal = () => {
   const [selectedEjercicio, setSelectedEjercicio] = useState<string>("all");
   const [thresholds, setThresholds] = useState<ThresholdValues>(defaultThresholds);
 
-  const filteredBasicos = useMemo(() =>
-    selectedEjercicio === "all" ? registrosBasicos : registrosBasicos.filter((v) => v.ejercicio === selectedEjercicio),
-    [registrosBasicos, selectedEjercicio]
-  );
+  const filteredBasicos = useMemo(() => {
+    const base = selectedEjercicio === "all"
+      ? registrosBasicos
+      : registrosBasicos.filter((v) => v.ejercicio === selectedEjercicio);
+
+    const latestByVaca = new Map<string, typeof base[number]>();
+    base.forEach((vaca) => {
+      latestByVaca.set(vaca.id_vaca, vaca);
+    });
+
+    return Array.from(latestByVaca.values());
+  }, [registrosBasicos, selectedEjercicio]);
 
   const vacaData: VacaIndicadores[] = useMemo(() => {
+    const productivosPorVaca = new Map(registrosProductivos.map((p) => [p.id_vaca, p]));
+    const reproductivosPorVaca = new Map(registrosReproductivos.map((r) => [r.id_vaca, r]));
+    const otrosPorVaca = new Map(registrosOtros.map((o) => [o.id_vaca, o]));
+
     return filteredBasicos.map((vaca) => {
-      const prod = registrosProductivos.find((p) => p.id_vaca === vaca.id_vaca);
-      const repro = registrosReproductivos.find((r) => r.id_vaca === vaca.id_vaca);
-      const otro = registrosOtros.find((o) => o.id_vaca === vaca.id_vaca);
+      const prod = productivosPorVaca.get(vaca.id_vaca);
+      const repro = reproductivosPorVaca.get(vaca.id_vaca);
+      const otro = otrosPorVaca.get(vaca.id_vaca);
 
       let lc305 = 0;
       if (prod) {
@@ -90,22 +125,17 @@ const TableroFinal = () => {
         }
       }
 
-      const ipc = repro ? parseFloat(repro.ipc) || 0 : 0;
-      const iip = repro ? parseFloat(repro.iip) || 0 : 0;
-      const serv_conc = repro ? parseFloat(repro.serv_conc) || 0 : 0;
+      const ipc = repro ? parseFloat(repro.ipc) || diffDias(repro.parto, repro.parto1) : 0;
+      const iip = repro ? parseFloat(repro.iip) || diffDias(repro.parto, repro.parto1) : 0;
+      const serv_conc = calcServConcepcion(repro);
       const edad = parseInt(vaca.edad) || 0;
       const partos = parseInt(vaca.partos) || 0;
       const lactancia = parseInt(vaca.lactancia) || 0;
 
-      // IPS = días entre parto y primer servicio
       const ips = repro ? diffDias(repro.parto, repro.servicio1) : 0;
-
-      // EPP = fecha_primer_parto - fecha_nacimiento (en días)
       const epp = repro && repro.parto && vaca.fecha_nacimiento
         ? diffDias(vaca.fecha_nacimiento, repro.parto)
         : 0;
-
-      // EPS = fecha_segundo_parto - fecha_nacimiento (en días)
       const eps = repro && repro.parto1 && vaca.fecha_nacimiento
         ? diffDias(vaca.fecha_nacimiento, repro.parto1)
         : 0;
@@ -115,7 +145,6 @@ const TableroFinal = () => {
       const fac_parto = otro ? parseFloat(otro.facParto) || 0 : 0;
       const longevidad = otro ? parseFloat(otro.longevidad) || 0 : 0;
       const fortaleza_patas = otro ? parseFloat(otro.fortalezaPatas) || 0 : 0;
-
       const esPrimipara = esVacaPrimipara(vaca);
 
       return {
@@ -144,8 +173,8 @@ const TableroFinal = () => {
 
   // Summary primíparas / multíparas
   const summary = useMemo(() => {
-    const primiparas = vacaData.filter((v) => v.esPrimipara);
-    const multiparas = vacaData.filter((v) => !v.esPrimipara);
+    const primiparas = vacaData.filter((v) => v.lactancia <= 1);
+    const multiparas = vacaData.filter((v) => v.lactancia >= 2);
 
     const calcAvg = (group: VacaIndicadores[], key: string) => {
       const vals = group.map((v) => {
