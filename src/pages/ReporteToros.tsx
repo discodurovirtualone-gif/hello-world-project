@@ -45,12 +45,14 @@ const ReporteToros = () => {
             const dep_prot = parseFloat(row.dep_prot || row.DEP_Prot || row.DEP_prot || 0) || 0;
             const dep_tph = parseFloat(row.dep_tph || row.DEP_TPH || row.DEP_tph || 0) || 0;
             const caracteristicas = String(row.caracteristicas || row.Caracteristicas || "");
+            const precio_dosis = parseFloat(row.precio_dosis || row.Precio_Dosis || row.precio || 0) || 0;
 
             return {
               id_toro, nombre, dep_leche, dep_grasa, dep_prot, dep_tph,
               indice_inia: calcINIA(dep_leche, dep_grasa, dep_prot),
               indice_rovere: calcRovere(dep_leche, dep_grasa, dep_prot, dep_tph),
               caracteristicas,
+              precio_dosis,
             };
           });
 

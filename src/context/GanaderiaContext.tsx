@@ -67,6 +67,7 @@ export interface Toro {
   indice_inia: number;
   indice_rovere: number;
   caracteristicas: string;
+  precio_dosis: number;
 }
 
 export interface FactorCorreccion {
