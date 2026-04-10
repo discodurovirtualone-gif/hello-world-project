@@ -10,6 +10,7 @@ import ThresholdFilters, { defaultThresholds, ThresholdValues } from "@/componen
 import FilteredCowsTable, { VacaIndicadores } from "@/components/tablero/FilteredCowsTable";
 import TorosSummaryCard from "@/components/tablero/TorosSummaryCard";
 import BestAnimalsTable from "@/components/tablero/BestAnimalsTable";
+import GeneticEconomicCard from "@/components/tablero/GeneticEconomicCard";
 
 const DIAS = [30, 120, 210, 270];
 const POTENCIALES = [2000, 3000, 4000, 5000, 6000, 7000];
@@ -346,6 +347,9 @@ const TableroFinal = () => {
 
         {/* Selección mejores vacas y toros */}
         <BestAnimalsTable />
+
+        {/* Análisis Genético-Económico */}
+        <GeneticEconomicCard />
       </div>
     </FormLayout>
   );
