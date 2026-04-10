@@ -130,17 +130,18 @@ const ReporteToros = () => {
                   <SortBtn field="dep_tph" label="DEP TPH" />
                   <SortBtn field="indice_inia" label="Índice INIA" />
                   <SortBtn field="indice_rovere" label="Índice Rovere" />
+                  <TableHead>Precio Dosis ($)</TableHead>
                   <TableHead>Características</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sorted.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                       No hay toros cargados. Suba una planilla Excel con columnas: id_toro, DEP_Leche, DEP_Grasa, DEP_Prot, DEP_TPH
                     </TableCell>
                   </TableRow>
-                ) : sorted.map((toro) => (
+                ) : sorted.map((toro, idx) => (
                   <TableRow key={toro.id_toro}>
                     <TableCell className="font-medium">{toro.id_toro}</TableCell>
                     <TableCell>{toro.nombre || "—"}</TableCell>
@@ -150,6 +151,21 @@ const ReporteToros = () => {
                     <TableCell>{toro.dep_tph.toFixed(2)}</TableCell>
                     <TableCell className="font-bold text-primary">{toro.indice_inia.toFixed(4)}</TableCell>
                     <TableCell className="font-bold text-primary">{toro.indice_rovere.toFixed(4)}</TableCell>
+                    <TableCell>
+                      <input
+                        type="number"
+                        value={toro.precio_dosis || ""}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          setToros((prev) => prev.map((t, i) => {
+                            if (t.id_toro === toro.id_toro) return { ...t, precio_dosis: val };
+                            return t;
+                          }));
+                        }}
+                        placeholder="0"
+                        className="w-24 h-8 text-sm px-2 rounded border bg-[#FFFACD] border-accent"
+                      />
+                    </TableCell>
                     <TableCell>{toro.caracteristicas || "—"}</TableCell>
                   </TableRow>
                 ))}
