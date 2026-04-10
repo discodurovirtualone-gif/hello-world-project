@@ -3,7 +3,6 @@ import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
 import { useGanaderia } from "@/context/GanaderiaContext";
 
@@ -21,28 +20,22 @@ const GeneticEconomicCard = () => {
   const { toros } = useGanaderia();
   const [anios, setAnios] = useState<number>(5);
   const [tasa, setTasa] = useState<number>(8);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const factor = CANTET_TABLE[anios]?.[tasa] ?? 0;
 
-  const toggleToro = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
-
-  const selectedToros = useMemo(
-    () => toros.filter((t) => selectedIds.includes(t.id_toro)),
-    [toros, selectedIds]
-  );
+  const top3 = useMemo(() => {
+    return [...toros]
+      .sort((a, b) => b.indice_inia - a.indice_inia)
+      .slice(0, 3);
+  }, [toros]);
 
   const results = useMemo(() => {
-    return selectedToros.map((t) => {
+    return top3.map((t) => {
       const ga = t.indice_inia;
-      const retorno = ga * factor - t.precio_dosis;
-      return { id_toro: t.id_toro, nombre: t.nombre, ga, precio: t.precio_dosis, retorno };
+      const retorno = ga * factor - (t.precio_dosis ?? 0);
+      return { id_toro: t.id_toro, nombre: t.nombre, ga, precio: t.precio_dosis ?? 0, retorno };
     });
-  }, [selectedToros, factor]);
+  }, [top3, factor]);
 
   const comparisons = useMemo(() => {
     const comps: { label: string; diff: number }[] = [];
@@ -58,7 +51,7 @@ const GeneticEconomicCard = () => {
   }, [results, factor]);
 
   const chartData = results.map((r) => ({
-    name: `${r.id_toro} - ${r.nombre}`,
+    name: r.nombre ? `${r.id_toro} - ${r.nombre}` : String(r.id_toro),
     Retorno: parseFloat(r.retorno.toFixed(2)),
   }));
 
@@ -66,6 +59,7 @@ const GeneticEconomicCard = () => {
     <Card className="border-2 border-primary/20">
       <CardHeader className="bg-accent/50 pb-2">
         <CardTitle className="text-lg font-bold">Análisis Genético-Económico (GA INIA)</CardTitle>
+        <p className="text-sm text-muted-foreground">Top 3 toros por Índice INIA</p>
       </CardHeader>
       <CardContent className="pt-4 space-y-6">
         {/* Tabla Cantet */}
@@ -131,102 +125,85 @@ const GeneticEconomicCard = () => {
           </div>
         </div>
 
-        {/* Selección de toros */}
-        <div>
-          <p className="text-sm font-semibold mb-2">Seleccionar Toros para Comparar</p>
-          {toros.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No hay toros cargados. Importe toros desde "Reporte Toros".</p>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {toros.map((t) => (
-                <label key={t.id_toro} className="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-accent/20">
-                  <Checkbox
-                    checked={selectedIds.includes(t.id_toro)}
-                    onCheckedChange={() => toggleToro(t.id_toro)}
-                  />
-                  <span className="text-sm font-medium">{t.id_toro}</span>
-                  <span className="text-xs text-muted-foreground truncate">{t.nombre}</span>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Tabla de Resultados */}
-        {results.length > 0 && (
-          <div>
-            <p className="text-sm font-semibold mb-2">Resultados</p>
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-primary/10">
-                  <TableHead className="font-semibold text-foreground">Toro</TableHead>
-                  <TableHead className="font-semibold text-foreground text-right">GA INIA</TableHead>
-                  <TableHead className="font-semibold text-foreground text-right">Precio Dosis ($)</TableHead>
-                  <TableHead className="font-semibold text-foreground text-right">Factor</TableHead>
-                  <TableHead className="font-semibold text-foreground text-right">Retorno ($)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {results.map((r) => (
-                  <TableRow key={r.id_toro}>
-                    <TableCell className="font-medium">{r.id_toro} - {r.nombre}</TableCell>
-                    <TableCell className="text-right">{r.ga.toFixed(4)}</TableCell>
-                    <TableCell className="text-right">{r.precio.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{factor}</TableCell>
-                    <TableCell className={`text-right font-bold ${r.retorno >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {r.retorno.toFixed(2)}
-                    </TableCell>
+        {toros.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No hay toros cargados. Importe toros desde "Reporte Toros".</p>
+        ) : (
+          <>
+            {/* Tabla de Resultados */}
+            <div>
+              <p className="text-sm font-semibold mb-2">Resultados — Top 3 Toros</p>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-primary/10">
+                    <TableHead className="font-semibold text-foreground">#</TableHead>
+                    <TableHead className="font-semibold text-foreground">Toro</TableHead>
+                    <TableHead className="font-semibold text-foreground text-right">GA INIA</TableHead>
+                    <TableHead className="font-semibold text-foreground text-right">Precio Dosis ($)</TableHead>
+                    <TableHead className="font-semibold text-foreground text-right">Factor</TableHead>
+                    <TableHead className="font-semibold text-foreground text-right">Retorno ($)</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-
-        {/* Retorno Comparado */}
-        {comparisons.length > 0 && (
-          <div>
-            <p className="text-sm font-semibold mb-2">Retorno Comparado</p>
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-primary/10">
-                  <TableHead className="font-semibold text-foreground">Comparación</TableHead>
-                  <TableHead className="font-semibold text-foreground text-right">Diferencia ($)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {comparisons.map((c) => (
-                  <TableRow key={c.label}>
-                    <TableCell className="font-medium">{c.label}</TableCell>
-                    <TableCell className={`text-right font-bold ${c.diff >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {c.diff >= 0 ? "+" : ""}{c.diff.toFixed(2)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-
-        {/* Gráfico de barras */}
-        {results.length > 0 && (
-          <div>
-            <p className="text-sm font-semibold mb-2">Comparación de Retornos</p>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis label={{ value: "$", angle: -90, position: "insideLeft", style: { fontSize: 12 } }} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="Retorno" radius={[4, 4, 0, 0]}>
-                  {chartData.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                </TableHeader>
+                <TableBody>
+                  {results.map((r, i) => (
+                    <TableRow key={r.id_toro}>
+                      <TableCell className="font-bold text-primary">{i + 1}</TableCell>
+                      <TableCell className="font-medium">{r.id_toro}{r.nombre ? ` - ${r.nombre}` : ""}</TableCell>
+                      <TableCell className="text-right">{r.ga.toFixed(4)}</TableCell>
+                      <TableCell className="text-right">{r.precio.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">{factor}</TableCell>
+                      <TableCell className={`text-right font-bold ${r.retorno >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        {r.retorno >= 0 ? "+" : ""}{r.retorno.toFixed(2)}
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Retorno Comparado */}
+            {comparisons.length > 0 && (
+              <div>
+                <p className="text-sm font-semibold mb-2">Retorno Comparado</p>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-primary/10">
+                      <TableHead className="font-semibold text-foreground">Comparación</TableHead>
+                      <TableHead className="font-semibold text-foreground text-right">Diferencia ($)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {comparisons.map((c) => (
+                      <TableRow key={c.label}>
+                        <TableCell className="font-medium">{c.label}</TableCell>
+                        <TableCell className={`text-right font-bold ${c.diff >= 0 ? "text-green-600" : "text-red-600"}`}>
+                          {c.diff >= 0 ? "+" : ""}{c.diff.toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {/* Gráfico de barras */}
+            <div>
+              <p className="text-sm font-semibold mb-2">Comparación de Retornos</p>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis label={{ value: "$", angle: -90, position: "insideLeft", style: { fontSize: 12 } }} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="Retorno" radius={[4, 4, 0, 0]}>
+                    {chartData.map((_, i) => (
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </>
         )}
 
         {/* Fórmulas */}
