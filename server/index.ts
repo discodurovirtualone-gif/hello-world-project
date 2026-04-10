@@ -275,6 +275,18 @@ app.post("/api/toros", async (req, res) => {
   }
 });
 
+app.put("/api/toros/:id_toro", async (req, res) => {
+  try {
+    const { id_toro } = req.params;
+    const body = req.body;
+    await db.update(toros).set(body).where(eq(toros.id_toro, id_toro));
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update toro" });
+  }
+});
+
 app.delete("/api/toros/:id_toro", async (req, res) => {
   try {
     const { id_toro } = req.params;

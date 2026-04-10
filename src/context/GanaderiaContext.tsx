@@ -270,11 +270,11 @@ export const GanaderiaProvider = ({ children }: { children: ReactNode }) => {
         if (torosData?.length) {
           setToros(torosData.map((r: any) => ({
             id_toro: r.id_toro || '', nombre: r.nombre || '',
-            dep_leche: r.dep_leche || 0, dep_grasa: r.dep_grasa || 0,
-            dep_prot: r.dep_prot || 0, dep_tph: r.dep_tph || 0,
-            indice_inia: r.indice_inia || 0, indice_rovere: r.indice_rovere || 0,
+            dep_leche: parseFloat(r.dep_leche) || 0, dep_grasa: parseFloat(r.dep_grasa) || 0,
+            dep_prot: parseFloat(r.dep_prot) || 0, dep_tph: parseFloat(r.dep_tph) || 0,
+            indice_inia: parseFloat(r.indice_inia) || 0, indice_rovere: parseFloat(r.indice_rovere) || 0,
             caracteristicas: r.caracteristicas || '',
-            precio_dosis: 0,
+            precio_dosis: parseFloat(r.precio_dosis) || 0,
           })));
         }
       } catch (err) {

@@ -76,5 +76,6 @@ export const toros = pgTable("toros", {
   indice_inia: numeric("indice_inia").default("0"),
   indice_rovere: numeric("indice_rovere").default("0"),
   caracteristicas: text("caracteristicas"),
+  precio_dosis: numeric("precio_dosis").default("0"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().default(sql`now()`),
 });
