@@ -1,12 +1,12 @@
 import { useState, useMemo } from "react";
 import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
+import { useGanaderia } from "@/context/GanaderiaContext";
 
-// Tabla Cantet - Factores de actualización (años x tasa de interés)
 const CANTET_TABLE: Record<number, Record<number, number>> = {
   5:  { 0: 3.916, 8: 2.764, 10: 2.546, 12: 2.35,  14: 2.173 },
   8:  { 0: 6.961, 8: 4.417, 10: 3.976, 12: 3.591, 14: 3.252 },
@@ -15,105 +15,57 @@ const CANTET_TABLE: Record<number, Record<number, number>> = {
 
 const ANIOS_OPTIONS = [5, 8, 10];
 const TASA_OPTIONS = [0, 8, 10, 12, 14];
-
-// Valores económicos por defecto (editables)
-const DEFAULT_VE = {
-  peso_nacer: 0,
-  peso_destete: 0,
-  aptitud_materna: 0,
-  circunferencia: 0,
-};
-
-interface Propuesta {
-  id: string;
-  nombre: string;
-  dep_peso_nacer: string;
-  dep_peso_destete: string;
-  dep_aptitud_materna: string;
-  dep_circunferencia: string;
-  precio_dosis: string;
-}
-
-const emptyPropuesta = (id: string, nombre: string): Propuesta => ({
-  id, nombre,
-  dep_peso_nacer: "",
-  dep_peso_destete: "",
-  dep_aptitud_materna: "",
-  dep_circunferencia: "",
-  precio_dosis: "",
-});
-
-const CHART_COLORS = ["hsl(200, 60%, 50%)", "hsl(0, 70%, 55%)", "hsl(142, 50%, 40%)", "hsl(45, 90%, 55%)"];
+const CHART_COLORS = ["hsl(200, 60%, 50%)", "hsl(0, 70%, 55%)", "hsl(142, 50%, 40%)", "hsl(45, 90%, 55%)", "hsl(280, 50%, 55%)", "hsl(330, 60%, 50%)"];
 
 const GeneticEconomicCard = () => {
-  const [ve, setVe] = useState({ ...DEFAULT_VE });
+  const { toros } = useGanaderia();
   const [anios, setAnios] = useState<number>(5);
   const [tasa, setTasa] = useState<number>(8);
-  const [propuestas, setPropuestas] = useState<Propuesta[]>([
-    emptyPropuesta("A", "Toro A"),
-    emptyPropuesta("B", "Toro B"),
-  ]);
-
-  const handleVeChange = (key: keyof typeof DEFAULT_VE, value: string) => {
-    setVe((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }));
-  };
-
-  const handlePropChange = (idx: number, key: keyof Propuesta, value: string) => {
-    setPropuestas((prev) => {
-      const copy = [...prev];
-      copy[idx] = { ...copy[idx], [key]: value };
-      return copy;
-    });
-  };
-
-  const addPropuesta = () => {
-    const letter = String.fromCharCode(65 + propuestas.length);
-    setPropuestas((prev) => [...prev, emptyPropuesta(letter, `Toro ${letter}`)]);
-  };
-
-  const removePropuesta = (idx: number) => {
-    if (propuestas.length <= 2) return;
-    setPropuestas((prev) => prev.filter((_, i) => i !== idx));
-  };
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const factor = CANTET_TABLE[anios]?.[tasa] ?? 0;
 
+  const toggleToro = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const selectedToros = useMemo(
+    () => toros.filter((t) => selectedIds.includes(t.id_toro)),
+    [toros, selectedIds]
+  );
+
   const results = useMemo(() => {
-    return propuestas.map((p) => {
-      const ga =
-        (parseFloat(p.dep_peso_nacer) || 0) * ve.peso_nacer +
-        (parseFloat(p.dep_peso_destete) || 0) * ve.peso_destete +
-        (parseFloat(p.dep_aptitud_materna) || 0) * ve.aptitud_materna +
-        (parseFloat(p.dep_circunferencia) || 0) * ve.circunferencia;
-      const precio = parseFloat(p.precio_dosis) || 0;
-      const retorno = ga * factor - precio;
-      return { id: p.id, nombre: p.nombre, ga, precio, retorno };
+    return selectedToros.map((t) => {
+      const ga = t.indice_inia;
+      const retorno = ga * factor - t.precio_dosis;
+      return { id_toro: t.id_toro, nombre: t.nombre, ga, precio: t.precio_dosis, retorno };
     });
-  }, [propuestas, ve, factor]);
+  }, [selectedToros, factor]);
 
-  const chartData = results.map((r) => ({
-    name: `${r.id} - ${r.nombre}`,
-    Retorno: parseFloat(r.retorno.toFixed(2)),
-  }));
-
-  // Retorno comparado: cada par
   const comparisons = useMemo(() => {
     const comps: { label: string; diff: number }[] = [];
     for (let i = 0; i < results.length; i++) {
       for (let j = i + 1; j < results.length; j++) {
-        comps.push({
-          label: `${results[i].id} vs ${results[j].id}`,
-          diff: results[i].retorno - results[j].retorno,
-        });
+        const a = results[i];
+        const b = results[j];
+        const diff = (a.ga - b.ga) * factor - (a.precio - b.precio);
+        comps.push({ label: `${a.id_toro} vs ${b.id_toro}`, diff });
       }
     }
     return comps;
-  }, [results]);
+  }, [results, factor]);
+
+  const chartData = results.map((r) => ({
+    name: `${r.id_toro} - ${r.nombre}`,
+    Retorno: parseFloat(r.retorno.toFixed(2)),
+  }));
 
   return (
     <Card className="border-2 border-primary/20">
       <CardHeader className="bg-accent/50 pb-2">
-        <CardTitle className="text-lg font-bold">Análisis Genético-Económico (GA $)</CardTitle>
+        <CardTitle className="text-lg font-bold">Análisis Genético-Económico (GA INIA)</CardTitle>
       </CardHeader>
       <CardContent className="pt-4 space-y-6">
         {/* Tabla Cantet */}
@@ -150,7 +102,7 @@ const GeneticEconomicCard = () => {
             <div className="space-y-1">
               <Label className="text-xs">Años</Label>
               <Select value={String(anios)} onValueChange={(v) => setAnios(Number(v))}>
-                <SelectTrigger className="w-24 h-8 text-sm bg-field-highlight border-accent">
+                <SelectTrigger className="w-24 h-8 text-sm bg-[#FFFACD] border-accent">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -163,7 +115,7 @@ const GeneticEconomicCard = () => {
             <div className="space-y-1">
               <Label className="text-xs">Tasa (%)</Label>
               <Select value={String(tasa)} onValueChange={(v) => setTasa(Number(v))}>
-                <SelectTrigger className="w-24 h-8 text-sm bg-field-highlight border-accent">
+                <SelectTrigger className="w-24 h-8 text-sm bg-[#FFFACD] border-accent">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -179,145 +131,57 @@ const GeneticEconomicCard = () => {
           </div>
         </div>
 
-        {/* Valores Económicos */}
+        {/* Selección de toros */}
         <div>
-          <p className="text-sm font-semibold mb-2">Valores Económicos de los Caracteres (VE)</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { key: "peso_nacer" as const, label: "Peso al Nacer" },
-              { key: "peso_destete" as const, label: "Peso al Destete" },
-              { key: "aptitud_materna" as const, label: "Aptitud Materna" },
-              { key: "circunferencia" as const, label: "Circunf. Escrotal" },
-            ].map((item) => (
-              <div key={item.key} className="space-y-1">
-                <Label className="text-xs font-medium">{item.label}</Label>
-                <Input
-                  type="number"
-                  value={ve[item.key] || ""}
-                  onChange={(e) => handleVeChange(item.key, e.target.value)}
-                  placeholder="0"
-                  className="h-8 text-sm bg-field-highlight border-accent"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Propuestas */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-semibold">Propuestas de Toros</p>
-            <button
-              onClick={addPropuesta}
-              className="text-xs px-3 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              + Agregar Propuesta
-            </button>
-          </div>
-          <div className="space-y-3">
-            {propuestas.map((p, idx) => (
-              <div key={p.id} className="grid grid-cols-2 md:grid-cols-6 gap-2 items-end p-3 border rounded-lg bg-muted/30">
-                <div className="space-y-1">
-                  <Label className="text-xs">Nombre</Label>
-                  <Input
-                    value={p.nombre}
-                    onChange={(e) => handlePropChange(idx, "nombre", e.target.value)}
-                    className="h-8 text-sm bg-field-highlight border-accent"
+          <p className="text-sm font-semibold mb-2">Seleccionar Toros para Comparar</p>
+          {toros.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay toros cargados. Importe toros desde "Reporte Toros".</p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {toros.map((t) => (
+                <label key={t.id_toro} className="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-accent/20">
+                  <Checkbox
+                    checked={selectedIds.includes(t.id_toro)}
+                    onCheckedChange={() => toggleToro(t.id_toro)}
                   />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">DEP P. Nacer</Label>
-                  <Input
-                    type="number"
-                    value={p.dep_peso_nacer}
-                    onChange={(e) => handlePropChange(idx, "dep_peso_nacer", e.target.value)}
-                    className="h-8 text-sm bg-field-highlight border-accent"
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">DEP P. Destete</Label>
-                  <Input
-                    type="number"
-                    value={p.dep_peso_destete}
-                    onChange={(e) => handlePropChange(idx, "dep_peso_destete", e.target.value)}
-                    className="h-8 text-sm bg-field-highlight border-accent"
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">DEP Apt. Materna</Label>
-                  <Input
-                    type="number"
-                    value={p.dep_aptitud_materna}
-                    onChange={(e) => handlePropChange(idx, "dep_aptitud_materna", e.target.value)}
-                    className="h-8 text-sm bg-field-highlight border-accent"
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">DEP Circunf.</Label>
-                  <Input
-                    type="number"
-                    value={p.dep_circunferencia}
-                    onChange={(e) => handlePropChange(idx, "dep_circunferencia", e.target.value)}
-                    className="h-8 text-sm bg-field-highlight border-accent"
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Precio Dosis ($)</Label>
-                  <div className="flex gap-1">
-                    <Input
-                      type="number"
-                      value={p.precio_dosis}
-                      onChange={(e) => handlePropChange(idx, "precio_dosis", e.target.value)}
-                      className="h-8 text-sm bg-field-highlight border-accent"
-                      placeholder="0"
-                    />
-                    {propuestas.length > 2 && (
-                      <button
-                        onClick={() => removePropuesta(idx)}
-                        className="text-xs px-2 h-8 rounded bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                  <span className="text-sm font-medium">{t.id_toro}</span>
+                  <span className="text-xs text-muted-foreground truncate">{t.nombre}</span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Tabla de Resultados */}
-        <div>
-          <p className="text-sm font-semibold mb-2">Resultados</p>
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-primary/10">
-                <TableHead className="font-semibold text-foreground">Propuesta</TableHead>
-                <TableHead className="font-semibold text-foreground text-right">GA $</TableHead>
-                <TableHead className="font-semibold text-foreground text-right">Precio Dosis</TableHead>
-                <TableHead className="font-semibold text-foreground text-right">Factor</TableHead>
-                <TableHead className="font-semibold text-foreground text-right">Retorno $</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {results.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.id} - {r.nombre}</TableCell>
-                  <TableCell className="text-right">{r.ga.toFixed(2)}</TableCell>
-                  <TableCell className="text-right">{r.precio.toFixed(2)}</TableCell>
-                  <TableCell className="text-right">{factor}</TableCell>
-                  <TableCell className={`text-right font-bold ${r.retorno >= 0 ? "text-green-600" : "text-red-600"}`}>
-                    {r.retorno.toFixed(2)}
-                  </TableCell>
+        {results.length > 0 && (
+          <div>
+            <p className="text-sm font-semibold mb-2">Resultados</p>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-primary/10">
+                  <TableHead className="font-semibold text-foreground">Toro</TableHead>
+                  <TableHead className="font-semibold text-foreground text-right">GA INIA</TableHead>
+                  <TableHead className="font-semibold text-foreground text-right">Precio Dosis ($)</TableHead>
+                  <TableHead className="font-semibold text-foreground text-right">Factor</TableHead>
+                  <TableHead className="font-semibold text-foreground text-right">Retorno ($)</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {results.map((r) => (
+                  <TableRow key={r.id_toro}>
+                    <TableCell className="font-medium">{r.id_toro} - {r.nombre}</TableCell>
+                    <TableCell className="text-right">{r.ga.toFixed(4)}</TableCell>
+                    <TableCell className="text-right">{r.precio.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{factor}</TableCell>
+                    <TableCell className={`text-right font-bold ${r.retorno >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {r.retorno.toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
 
         {/* Retorno Comparado */}
         {comparisons.length > 0 && (
@@ -327,7 +191,7 @@ const GeneticEconomicCard = () => {
               <TableHeader>
                 <TableRow className="bg-primary/10">
                   <TableHead className="font-semibold text-foreground">Comparación</TableHead>
-                  <TableHead className="font-semibold text-foreground text-right">Diferencia $</TableHead>
+                  <TableHead className="font-semibold text-foreground text-right">Diferencia ($)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -345,7 +209,7 @@ const GeneticEconomicCard = () => {
         )}
 
         {/* Gráfico de barras */}
-        {results.some((r) => r.ga !== 0) && (
+        {results.length > 0 && (
           <div>
             <p className="text-sm font-semibold mb-2">Comparación de Retornos</p>
             <ResponsiveContainer width="100%" height={250}>
@@ -368,9 +232,9 @@ const GeneticEconomicCard = () => {
         {/* Fórmulas */}
         <div className="bg-muted/50 rounded-lg p-4 text-sm space-y-1 border">
           <p className="font-semibold text-xs text-muted-foreground uppercase tracking-wide mb-2">Fórmulas</p>
-          <p><strong>GA $</strong> = (DEP_peso_nacer × VE_peso_nacer) + (DEP_peso_destete × VE_peso_destete) + (DEP_aptitud_materna × VE_aptitud_materna) + (DEP_circunferencia × VE_circunferencia)</p>
-          <p><strong>Retorno</strong> = (GA × Factor de actualización) – Precio dosis</p>
-          <p><strong>Retorno Comparado</strong> = Retorno_A – Retorno_B</p>
+          <p><strong>GA INIA</strong> = Índice INIA del toro (valor publicado)</p>
+          <p><strong>Retorno</strong> = (GA INIA × Factor de actualización) – Precio dosis</p>
+          <p><strong>Retorno Comparado</strong> = (GA INIA A – GA INIA B) × Factor – (Precio A – Precio B)</p>
         </div>
       </CardContent>
     </Card>
