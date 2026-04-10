@@ -94,13 +94,8 @@ const BestAnimalsTable = () => {
 
   const topBulls = useMemo(() => {
     return [...toros]
-      .filter((t) => t.dep_leche != null)
-      .sort((a, b) => {
-        const depA = Number(a.dep_leche) || 0;
-        const depB = Number(b.dep_leche) || 0;
-        if (depB !== depA) return depB - depA;
-        return (Number(b.indice_inia) || 0) - (Number(a.indice_inia) || 0);
-      })
+      .filter((t) => t.indice_inia != null)
+      .sort((a, b) => (Number(b.indice_inia) || 0) - (Number(a.indice_inia) || 0))
       .slice(0, 3);
   }, [toros]);
 
@@ -144,7 +139,7 @@ const BestAnimalsTable = () => {
 
           {/* Top 3 Toros */}
           <div>
-            <p className="text-sm font-semibold mb-2">Top 3 Toros (por DEP Leche / Índice INIA)</p>
+            <p className="text-sm font-semibold mb-2">Top 3 Toros (por Índice INIA)</p>
             {topBulls.length === 0 ? (
               <p className="text-muted-foreground text-sm">Sin datos de toros.</p>
             ) : (
