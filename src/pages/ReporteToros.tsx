@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, ArrowUpDown, Pencil, Trash2, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { useGanaderia, Toro } from "@/context/GanaderiaContext";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 
 const calcINIA = (dep_leche: number, dep_grasa: number, dep_prot: number) =>
   -0.0477 * dep_leche + 0.8317 * dep_grasa + 1.4394 * dep_prot;
@@ -106,7 +106,7 @@ const ReporteToros = () => {
     };
 
     try {
-      await api.put(`/toros/${encodeURIComponent(editingId)}`, {
+      await supabase.from('toros').update({
         nombre: updated.nombre,
         dep_leche,
         dep_grasa,
@@ -116,7 +116,7 @@ const ReporteToros = () => {
         indice_rovere,
         precio_dosis,
         caracteristicas: updated.caracteristicas,
-      });
+      } as any).eq('id_toro', editingId);
       setToros(prev => prev.map(t => t.id_toro === editingId ? updated : t));
       toast.success("Toro actualizado");
       cancelEdit();
@@ -130,7 +130,7 @@ const ReporteToros = () => {
 
   const handleDelete = async (id_toro: string) => {
     try {
-      await api.delete(`/toros/${encodeURIComponent(id_toro)}`);
+      await supabase.from('toros').delete().eq('id_toro', id_toro);
       setToros(prev => prev.filter(t => t.id_toro !== id_toro));
       toast.success("Toro eliminado");
     } catch (err) {
@@ -176,7 +176,7 @@ const ReporteToros = () => {
             indice_inia: t.indice_inia, indice_rovere: t.indice_rovere,
             caracteristicas: t.caracteristicas, precio_dosis: t.precio_dosis,
           }));
-          api.post('/toros', dbRows).catch(err => console.error('Error saving toros:', err));
+          supabase.from('toros').insert(dbRows as any).then(({ error }) => { if (error) console.error('Error saving toros:', error); });
           toast.success(`${newToros.length} toros importados con índices calculados`);
         } else {
           toast.error("No se encontraron datos de toros válidos");

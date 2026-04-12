@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import { Pencil, Trash2 } from "lucide-react";
 import { useGanaderia, RegistroOtro, otroToDb } from "@/context/GanaderiaContext";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import PdfReportButton from "@/components/PdfReportButton";
 import DeleteAllButton from "@/components/DeleteAllButton";
 
@@ -45,12 +45,12 @@ const RegistrosOtros = () => {
 
     if (existingIdx >= 0) {
       setRegistrosOtros(prev => prev.map((r, i) => (i === existingIdx ? form : r)));
-      await api.put(`/registros_otros/${encodeURIComponent(form.id_vaca)}/${encodeURIComponent(form.ejercicio)}`, dbRow);
+      await supabase.from('registros_otros').update(dbRow).eq('id_vaca', form.id_vaca).eq('ejercicio', form.ejercicio);
       toast.success("Registro actualizado");
     } else {
       setRegistrosOtros(prev => [...prev, form]);
       try {
-        await api.post('/registros_otros', dbRow);
+        await supabase.from('registros_otros').insert(dbRow);
         toast.success("Registro guardado");
       } catch (err) { toast.error("Error al guardar"); console.error(err); }
     }
@@ -63,7 +63,7 @@ const RegistrosOtros = () => {
   };
 
   const handleDeleteAll = async () => {
-    await api.delete('/registros_otros');
+    await supabase.from('registros_otros').delete().neq('id', '');
     setRegistrosOtros([]);
     toast.success("Todos los otros registros eliminados");
   };

@@ -219,6 +219,7 @@ export type Database = {
           indice_inia: number | null
           indice_rovere: number | null
           nombre: string | null
+          precio_dosis: number | null
         }
         Insert: {
           caracteristicas?: string | null
@@ -232,6 +233,7 @@ export type Database = {
           indice_inia?: number | null
           indice_rovere?: number | null
           nombre?: string | null
+          precio_dosis?: number | null
         }
         Update: {
           caracteristicas?: string | null
@@ -245,6 +247,7 @@ export type Database = {
           indice_inia?: number | null
           indice_rovere?: number | null
           nombre?: string | null
+          precio_dosis?: number | null
         }
         Relationships: []
       }

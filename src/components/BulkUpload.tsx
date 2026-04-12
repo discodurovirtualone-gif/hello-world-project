@@ -3,7 +3,7 @@ import * as XLSX from "xlsx";
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import {
   useGanaderia, RegistroBasico, RegistroProductivo, RegistroReproductivo, RegistroOtro,
   basicoToDb, productivoToDb, reproductivoToDb, otroToDb, calcEdadMeses,
@@ -126,7 +126,7 @@ const BulkUpload = () => {
             } as RegistroBasico));
             setRegistrosBasicos(prev => [...prev, ...appRows]);
             const dbRows = appRows.map(basicoToDb);
-            try { await api.post('/registros_basicos', dbRows); }
+            try { await supabase.from('registros_basicos').insert(dbRows); }
             catch (err: any) { errors.push(`Básicos DB: ${err.message}`); console.error(err); }
           } else if (sec.name === "Productivos") {
             const appRows: RegistroProductivo[] = rows.map(r => ({
@@ -140,7 +140,7 @@ const BulkUpload = () => {
             } as RegistroProductivo));
             setRegistrosProductivos(prev => [...prev, ...appRows]);
             const dbRows = appRows.map(productivoToDb);
-            try { await api.post('/registros_productivos', dbRows); }
+            try { await supabase.from('registros_productivos').insert(dbRows); }
             catch (err: any) { errors.push(`Productivos DB: ${err.message}`); console.error(err); }
           } else if (sec.name === "Reproductivos") {
             const appRows: RegistroReproductivo[] = rows.map(r => {
@@ -169,13 +169,13 @@ const BulkUpload = () => {
             });
             setRegistrosReproductivos(prev => [...prev, ...appRows]);
             const dbRows = appRows.map(reproductivoToDb);
-            try { await api.post('/registros_reproductivos', dbRows); }
+            try { await supabase.from('registros_reproductivos').insert(dbRows); }
             catch (err: any) { errors.push(`Reproductivos DB: ${err.message}`); console.error(err); }
           } else if (sec.name === "Otros") {
             const appRows = rows as unknown as RegistroOtro[];
             setRegistrosOtros(prev => [...prev, ...appRows]);
             const dbRows = appRows.map(otroToDb);
-            try { await api.post('/registros_otros', dbRows); }
+            try { await supabase.from('registros_otros').insert(dbRows); }
             catch (err: any) { errors.push(`Otros DB: ${err.message}`); console.error(err); }
           }
 

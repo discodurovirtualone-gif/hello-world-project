@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface RegistroReproductivo {
   id_vaca: string;
@@ -160,7 +160,7 @@ const toDateOrNull = (v: string): string | null => (!v || v === "") ? null : v;
 export const basicoToDb = (r: RegistroBasico) => ({
   ejercicio: r.ejercicio, id_vaca: r.id_vaca, partos: r.partos,
   fecha_nacimiento: toDateOrNull(r.fecha_nacimiento), raza: r.raza,
-  lactancia: toInt(r.lactancia), edad: toInt(r.edad), potencial_vaca: r.potencial_vaca,
+  lactancia: toInt(r.lactancia) ?? 1, edad: toInt(r.edad), potencial_vaca: r.potencial_vaca,
 });
 
 export const productivoToDb = (r: RegistroProductivo) => ({
@@ -224,12 +224,18 @@ export const GanaderiaProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [basicos, productivos, reproductivos, otros, torosData] = await Promise.all([
-          api.get("/registros_basicos"),
-          api.get("/registros_productivos"),
-          api.get("/registros_reproductivos"),
-          api.get("/registros_otros"),
-          api.get("/toros"),
+        const [
+          { data: basicos },
+          { data: productivos },
+          { data: reproductivos },
+          { data: otros },
+          { data: torosData },
+        ] = await Promise.all([
+          supabase.from('registros_basicos').select('*'),
+          supabase.from('registros_productivos').select('*'),
+          supabase.from('registros_reproductivos').select('*'),
+          supabase.from('registros_otros').select('*'),
+          supabase.from('toros').select('*'),
         ]);
 
         if (basicos?.length) {
@@ -287,7 +293,7 @@ export const GanaderiaProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const deleteRegistro = async (table: string, id_vaca: string, ejercicio: string) => {
-    await api.delete(`/${table}/${encodeURIComponent(id_vaca)}/${encodeURIComponent(ejercicio)}`);
+    await supabase.from(table as any).delete().eq('id_vaca', id_vaca).eq('ejercicio', ejercicio);
     switch (table) {
       case 'registros_basicos':
         setRegistrosBasicos(prev => prev.filter(r => !(r.id_vaca === id_vaca && r.ejercicio === ejercicio)));
