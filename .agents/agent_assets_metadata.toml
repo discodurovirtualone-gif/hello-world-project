@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "lxOWb_VAsVdzJHAflwtmI"
+uri = "file://smga-proyecto.zip"
+type = "unspecified"
+title = "SMGA - Código fuente completo (0.3 MB)"
