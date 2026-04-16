@@ -225,11 +225,11 @@ export const GanaderiaProvider = ({ children }: { children: ReactNode }) => {
     const loadData = async () => {
       try {
         const [
-          { data: basicos },
-          { data: productivos },
-          { data: reproductivos },
-          { data: otros },
-          { data: torosData },
+          { data: basicos, error: e1 },
+          { data: productivos, error: e2 },
+          { data: reproductivos, error: e3 },
+          { data: otros, error: e4 },
+          { data: torosData, error: e5 },
         ] = await Promise.all([
           supabase.from('registros_basicos').select('*'),
           supabase.from('registros_productivos').select('*'),
@@ -237,6 +237,11 @@ export const GanaderiaProvider = ({ children }: { children: ReactNode }) => {
           supabase.from('registros_otros').select('*'),
           supabase.from('toros').select('*'),
         ]);
+        if (e1) console.error('Error cargando basicos:', e1.message);
+        if (e2) console.error('Error cargando productivos:', e2.message);
+        if (e3) console.error('Error cargando reproductivos:', e3.message);
+        if (e4) console.error('Error cargando otros:', e4.message);
+        if (e5) console.error('Error cargando toros:', e5.message);
 
         if (basicos?.length) {
           setRegistrosBasicos(basicos.map((r: any) => ({

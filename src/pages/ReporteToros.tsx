@@ -105,37 +105,36 @@ const ReporteToros = () => {
       caracteristicas: editState.caracteristicas,
     };
 
-    try {
-      await supabase.from('toros').update({
-        nombre: updated.nombre,
-        dep_leche,
-        dep_grasa,
-        dep_prot,
-        dep_tph,
-        indice_inia,
-        indice_rovere,
-        precio_dosis,
-        caracteristicas: updated.caracteristicas,
-      } as any).eq('id_toro', editingId);
+    const { error } = await supabase.from('toros').update({
+      nombre: updated.nombre,
+      dep_leche,
+      dep_grasa,
+      dep_prot,
+      dep_tph,
+      indice_inia,
+      indice_rovere,
+      precio_dosis,
+      caracteristicas: updated.caracteristicas,
+    } as any).eq('id_toro', editingId);
+    if (error) {
+      toast.error(`Error al guardar: ${error.message}`);
+      console.error(error);
+    } else {
       setToros(prev => prev.map(t => t.id_toro === editingId ? updated : t));
       toast.success("Toro actualizado");
       cancelEdit();
-    } catch (err) {
-      toast.error("Error al guardar");
-      console.error(err);
-    } finally {
-      setSaving(false);
     }
+    setSaving(false);
   };
 
   const handleDelete = async (id_toro: string) => {
-    try {
-      await supabase.from('toros').delete().eq('id_toro', id_toro);
+    const { error } = await supabase.from('toros').delete().eq('id_toro', id_toro);
+    if (error) {
+      toast.error(`Error al eliminar: ${error.message}`);
+      console.error(error);
+    } else {
       setToros(prev => prev.filter(t => t.id_toro !== id_toro));
       toast.success("Toro eliminado");
-    } catch (err) {
-      toast.error("Error al eliminar");
-      console.error(err);
     }
   };
 

@@ -49,15 +49,15 @@ const RegistrosBasicos = () => {
     const dbRow = basicoToDb(form);
     if (editIndex !== null) {
       const old = registrosBasicos[editIndex];
+      const { error } = await supabase.from('registros_basicos').update(dbRow).eq('id_vaca', old.id_vaca).eq('ejercicio', old.ejercicio);
+      if (error) { toast.error(`Error al actualizar: ${error.message}`); console.error(error); return; }
       setRegistrosBasicos(prev => prev.map((r, i) => (i === editIndex ? form : r)));
-      await supabase.from('registros_basicos').update(dbRow).eq('id_vaca', old.id_vaca).eq('ejercicio', old.ejercicio);
       toast.success("Registro actualizado");
     } else {
+      const { error } = await supabase.from('registros_basicos').insert(dbRow);
+      if (error) { toast.error(`Error al guardar: ${error.message}`); console.error(error); return; }
       setRegistrosBasicos(prev => [...prev, form]);
-      try {
-        await supabase.from('registros_basicos').insert(dbRow);
-        toast.success("Registro guardado");
-      } catch (err) { toast.error("Error al guardar"); console.error(err); }
+      toast.success("Registro guardado");
     }
     setForm(emptyRegistro); setEditIndex(null); setOpen(false);
   };

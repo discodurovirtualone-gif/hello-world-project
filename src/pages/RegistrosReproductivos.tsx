@@ -76,15 +76,15 @@ const RegistrosReproductivos = () => {
     const existingIdx = registrosReproductivos.findIndex(r => r.id_vaca === editVacaId);
 
     if (existingIdx >= 0) {
+      const { error } = await supabase.from('registros_reproductivos').update(dbRow).eq('id_vaca', updatedForm.id_vaca).eq('ejercicio', updatedForm.ejercicio);
+      if (error) { toast.error(`Error al actualizar: ${error.message}`); console.error(error); return; }
       setRegistrosReproductivos(prev => prev.map((r, i) => (i === existingIdx ? updatedForm : r)));
-      await supabase.from('registros_reproductivos').update(dbRow).eq('id_vaca', updatedForm.id_vaca).eq('ejercicio', updatedForm.ejercicio);
       toast.success("Registro actualizado");
     } else {
+      const { error } = await supabase.from('registros_reproductivos').insert(dbRow);
+      if (error) { toast.error(`Error al guardar: ${error.message}`); console.error(error); return; }
       setRegistrosReproductivos(prev => [...prev, updatedForm]);
-      try {
-        await supabase.from('registros_reproductivos').insert(dbRow);
-        toast.success("Registro guardado");
-      } catch (err) { toast.error("Error al guardar"); console.error(err); }
+      toast.success("Registro guardado");
     }
     setForm(null); setEditVacaId(null); setOpen(false);
   };
